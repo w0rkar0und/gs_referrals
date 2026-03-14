@@ -14,8 +14,25 @@ export default function ReferralForm() {
   const [hrError, setHrError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [dateError, setDateError] = useState<string | null>(null)
 
-  const canSubmit = contractor && startDate && !hrError && !submitting
+  function validateStartDate(date: string): string | null {
+    if (!date) return null
+    const start = new Date(date)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const diffDays = Math.floor((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
+    if (diffDays > 7) {
+      return (
+        'The start date is more than 7 days before today. ' +
+        'Referrals cannot be backdated beyond 7 days. ' +
+        'If you believe this is an error, please contact SLT quoting reference REF-003.'
+      )
+    }
+    return null
+  }
+
+  const canSubmit = contractor && startDate && !hrError && !dateError && !submitting
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -65,13 +82,18 @@ export default function ReferralForm() {
           type="date"
           value={startDate}
           onChange={(e) => {
-            setStartDate(e.target.value)
+            const val = e.target.value
+            setStartDate(val)
+            setDateError(validateStartDate(val))
             setContractor(null)
             setHrError(null)
           }}
           required
           className="w-full rounded border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         />
+        {dateError && (
+          <p className="text-sm text-red-600 mt-1">{dateError}</p>
+        )}
       </div>
 
       <HrCodeInput
