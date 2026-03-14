@@ -28,6 +28,7 @@ export default function Navbar({ isAdmin, displayId }: NavbarProps) {
   if (isAdmin) {
     links.push(
       { href: '/admin', label: 'Admin Dashboard' },
+      { href: '/admin/checks', label: 'Run Checks' },
       { href: '/admin/users', label: 'Users' },
     )
   }
@@ -39,7 +40,7 @@ export default function Navbar({ isAdmin, displayId }: NavbarProps) {
           <span className="font-bold text-gray-900 text-sm">Greythorn Referrals</span>
           <div className="flex items-center gap-1">
             {links.map((link) => {
-              const active = pathname === link.href || pathname.startsWith(link.href + '/')
+              const active = pathname === link.href || (link.href !== '/admin' && pathname.startsWith(link.href + '/'))
               return (
                 <Link
                   key={link.href}
