@@ -28,7 +28,7 @@ SELECT
     c.HrCode,
     up.FirstName,
     up.LastName,
-    COALESCE(acct.Active, 0) AS IsActive,
+    COALESCE(acct.Active, 1) AS IsActive,
     CONVERT(VARCHAR(10), MAX(CAST(d.Date AS DATE)), 120) AS LastWorkedDate,
     acct.CreatedAt AS StatusChangedAt
 FROM Contractor c
