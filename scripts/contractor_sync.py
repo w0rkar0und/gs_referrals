@@ -28,13 +28,13 @@ SELECT
     c.HrCode,
     up.FirstName,
     up.LastName,
-    CASE WHEN c.IsActive = 1 THEN 1 ELSE 0 END AS IsActive,
+    CASE WHEN c.CurrentRecruitmentStatusId = 12 THEN 1 ELSE 0 END AS IsActive,
     CONVERT(VARCHAR(10), MAX(CAST(d.Date AS DATE)), 120) AS LastWorkedDate
 FROM Contractor c
 JOIN [User] u ON u.UserId = c.UserId
 JOIN UserProfile up ON up.UserId = u.UserId
 LEFT JOIN Debrief d ON d.ContractorId = c.ContractorId AND d.IsApproved = 1
-GROUP BY c.HrCode, up.FirstName, up.LastName, c.IsActive
+GROUP BY c.HrCode, up.FirstName, up.LastName, c.CurrentRecruitmentStatusId
 ORDER BY c.HrCode
 """
 
@@ -46,7 +46,7 @@ def main():
     try:
         # Connect to Greythorn SQL Server
         conn_str = (
-            f"DRIVER={{ODBC Driver 17 for SQL Server}};"
+            f"DRIVER={{ODBC Driver 18 for SQL Server}};"
             f"SERVER={GT_DB_SERVER},{GT_DB_PORT};"
             f"DATABASE={GT_DB_NAME};"
             f"UID={GT_DB_USER};"
@@ -70,7 +70,7 @@ def main():
                 "last_name": row.LastName.strip(),
                 "is_active": bool(row.IsActive),
                 "last_worked_date": row.LastWorkedDate if row.LastWorkedDate else None,
-                "synced_at": datetime.utcnow().isoformat(),
+                "synced_at": datetime.now(tz=__import__('datetime').UTC).isoformat(),
             })
 
         # Upsert to Supabase in batches
