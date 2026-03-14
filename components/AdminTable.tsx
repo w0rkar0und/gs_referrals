@@ -60,6 +60,40 @@ export default function AdminTable({ referrals: initialReferrals }: { referrals:
     setSavingId(null)
   }
 
+  async function handleReset(id: string) {
+    if (!confirm('Reset this referral to pending? This clears all check data and approval status.')) return
+    setSavingId(id)
+    try {
+      await updateReferral(id, {
+        status: 'pending',
+        working_days_approved: null,
+        working_days_projected: null,
+        working_days_total: null,
+        last_checked_at: null,
+        last_check_snapshot: null,
+        approved_at: null,
+        query_version: null,
+      })
+      setReferrals((prev) =>
+        prev.map((r) => r.id === id ? {
+          ...r,
+          status: 'pending' as ReferralStatus,
+          working_days_approved: null,
+          working_days_projected: null,
+          working_days_total: null,
+          last_checked_at: null,
+          last_check_snapshot: null,
+          approved_at: null,
+          query_version: null,
+        } : r)
+      )
+      if (expandedId === id) setExpandedId(null)
+    } catch {
+      alert('Failed to reset referral.')
+    }
+    setSavingId(null)
+  }
+
   async function handleNotesSave(id: string) {
     setSavingId(id)
     try {
@@ -141,16 +175,28 @@ export default function AdminTable({ referrals: initialReferrals }: { referrals:
                     {r.last_checked_at ? formatDate(r.last_checked_at) : '—'}
                   </td>
                   <td className="py-3 pr-3">
-                    <select
-                      value={r.status}
-                      onChange={(e) => handleStatusChange(r.id, e.target.value as ReferralStatus)}
-                      disabled={savingId === r.id}
-                      className="rounded border border-gray-300 px-2 py-1 text-xs"
-                    >
-                      <option value="pending">Pending</option>
-                      <option value="not_yet_eligible">Not Yet Eligible</option>
-                      <option value="approved">Approved</option>
-                    </select>
+                    <div className="flex items-center gap-1">
+                      <select
+                        value={r.status}
+                        onChange={(e) => handleStatusChange(r.id, e.target.value as ReferralStatus)}
+                        disabled={savingId === r.id}
+                        className="rounded border border-gray-300 px-2 py-1 text-xs"
+                      >
+                        <option value="pending">Pending</option>
+                        <option value="not_yet_eligible">Not Yet Eligible</option>
+                        <option value="approved">Approved</option>
+                      </select>
+                      {(r.status !== 'pending' || r.last_checked_at) && (
+                        <button
+                          onClick={() => handleReset(r.id)}
+                          disabled={savingId === r.id}
+                          className="text-xs text-red-500 hover:text-red-700 whitespace-nowrap"
+                          title="Reset to pending and clear all check data"
+                        >
+                          Reset
+                        </button>
+                      )}
+                    </div>
                   </td>
                   <td className="py-3">
                     {isEditingNotes ? (

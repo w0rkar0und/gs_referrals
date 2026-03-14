@@ -46,7 +46,11 @@ export async function POST(request: NextRequest) {
   }
 
   // Only allow specific fields
-  const allowed = ['status', 'start_date', 'approval_notes', 'approved_at']
+  const allowed = [
+    'status', 'start_date', 'approval_notes', 'approved_at',
+    'working_days_approved', 'working_days_projected', 'working_days_total',
+    'last_checked_at', 'last_check_snapshot', 'query_version',
+  ]
   const filtered: Record<string, unknown> = {}
   for (const key of allowed) {
     if (key in updates) filtered[key] = updates[key]
