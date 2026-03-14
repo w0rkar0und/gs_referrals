@@ -2,15 +2,6 @@
 
 import type { SyncLogEntry } from '@/lib/types'
 
-function formatDateTime(dateStr: string): string {
-  const d = new Date(dateStr)
-  return d.toLocaleDateString('en-GB', {
-    day: '2-digit', month: '2-digit', year: 'numeric',
-  }) + ' ' + d.toLocaleTimeString('en-GB', {
-    hour: '2-digit', minute: '2-digit',
-  })
-}
-
 function isToday(dateStr: string): boolean {
   const d = new Date(dateStr)
   const now = new Date()
@@ -20,7 +11,8 @@ function isToday(dateStr: string): boolean {
 export default function SyncStatusBanner({ lastSync }: { lastSync: SyncLogEntry | null }) {
   if (!lastSync) {
     return (
-      <div className="rounded bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800 mb-6">
+      <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800 mb-6 flex items-center gap-2">
+        <span className="w-2 h-2 bg-red-500 rounded-full shrink-0" />
         No sync has ever run.
       </div>
     )
@@ -28,15 +20,20 @@ export default function SyncStatusBanner({ lastSync }: { lastSync: SyncLogEntry 
 
   if (isToday(lastSync.ran_at)) {
     return (
-      <div className="rounded bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-800 mb-6">
+      <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-800 mb-6 flex items-center gap-2">
+        <span className="w-2 h-2 bg-emerald-500 rounded-full shrink-0" />
         Contractor sync completed today at {new Date(lastSync.ran_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}.
       </div>
     )
   }
 
+  const dateStr = new Date(lastSync.ran_at).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  const timeStr = new Date(lastSync.ran_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+
   return (
-    <div className="rounded bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800 mb-6">
-      Last sync: {formatDateTime(lastSync.ran_at)} — contractors table may be stale.
+    <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800 mb-6 flex items-center gap-2">
+      <span className="w-2 h-2 bg-amber-500 rounded-full shrink-0" />
+      Last sync: {dateStr} {timeStr} — contractors table may be stale.
     </div>
   )
 }

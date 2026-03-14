@@ -6,6 +6,8 @@ import { createClient } from '@/lib/supabase'
 import HrCodeInput from './HrCodeInput'
 import type { Contractor } from '@/lib/types'
 
+const inputClasses = "w-full rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 focus:bg-white"
+
 export default function ReferralForm() {
   const router = useRouter()
   const supabase = createClient()
@@ -74,7 +76,7 @@ export default function ReferralForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <div>
-        <label htmlFor="start_date" className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="start_date" className="block text-sm font-medium text-slate-700 mb-1.5">
           Start Date
         </label>
         <input
@@ -89,10 +91,10 @@ export default function ReferralForm() {
             setHrError(null)
           }}
           required
-          className="w-full rounded border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className={inputClasses}
         />
         {dateError && (
-          <p className="text-sm text-red-600 mt-1">{dateError}</p>
+          <div className="rounded-lg bg-red-50 border border-red-100 px-3 py-2 text-sm text-red-700 mt-2">{dateError}</div>
         )}
       </div>
 
@@ -103,11 +105,11 @@ export default function ReferralForm() {
       />
 
       {hrError && (
-        <p className="text-sm text-red-600">{hrError}</p>
+        <div className="rounded-lg bg-red-50 border border-red-100 px-3 py-2 text-sm text-red-700">{hrError}</div>
       )}
 
       <div>
-        <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="name" className="block text-sm font-medium text-slate-700 mb-1.5">
           Contractor Name
         </label>
         <input
@@ -115,19 +117,19 @@ export default function ReferralForm() {
           type="text"
           value={contractor ? `${contractor.first_name} ${contractor.last_name}` : ''}
           readOnly
-          className="w-full rounded border border-gray-300 px-3 py-2 text-gray-900 bg-gray-50"
+          className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-slate-900 placeholder:text-slate-400"
           placeholder="Auto-populated from HR code"
         />
       </div>
 
       {submitError && (
-        <p className="text-sm text-red-600">{submitError}</p>
+        <div className="rounded-lg bg-red-50 border border-red-100 px-3 py-2 text-sm text-red-700">{submitError}</div>
       )}
 
       <button
         type="submit"
         disabled={!canSubmit}
-        className="w-full bg-blue-600 text-white rounded py-2 font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full bg-blue-600 text-white rounded-lg py-2.5 text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
       >
         {submitting ? 'Submitting...' : 'Submit Referral'}
       </button>

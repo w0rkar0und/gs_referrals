@@ -68,13 +68,13 @@ export default async function AdminPage() {
   })
 
   return (
-    <div className="min-h-screen bg-gray-50 py-10">
-      <div className="max-w-6xl mx-auto px-4">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">Admin Dashboard</h1>
+    <div className="py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+        <h1 className="text-xl font-semibold text-slate-900 mb-6">Admin Dashboard</h1>
 
         <SyncStatusBanner lastSync={lastSync} />
 
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
           <AdminTable referrals={enrichedReferrals} />
         </div>
       </div>

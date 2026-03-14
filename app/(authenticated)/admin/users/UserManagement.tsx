@@ -9,6 +9,8 @@ function formatDate(dateStr: string): string {
   })
 }
 
+const inputClasses = "w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 focus:bg-white"
+
 export default function UserManagement({ initialProfiles }: { initialProfiles: Profile[] }) {
   const [profiles, setProfiles] = useState(initialProfiles)
   const [displayId, setDisplayId] = useState('')
@@ -50,14 +52,14 @@ export default function UserManagement({ initialProfiles }: { initialProfiles: P
   }
 
   return (
-    <>
+    <div className="space-y-6">
       {/* Create user form */}
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Create New User</h2>
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+        <h2 className="text-base font-semibold text-slate-900 mb-4">Create New User</h2>
         <form onSubmit={handleCreate} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label htmlFor="display_id" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="display_id" className="block text-sm font-medium text-slate-700 mb-1.5">
                 Display ID
               </label>
               <input
@@ -67,11 +69,11 @@ export default function UserManagement({ initialProfiles }: { initialProfiles: P
                 onChange={(e) => setDisplayId(e.target.value)}
                 required
                 placeholder="e.g. X123456 or j.smith"
-                className="w-full rounded border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className={inputClasses}
               />
             </div>
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="password" className="block text-sm font-medium text-slate-700 mb-1.5">
                 Temporary Password
               </label>
               <input
@@ -81,27 +83,29 @@ export default function UserManagement({ initialProfiles }: { initialProfiles: P
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={6}
-                className="w-full rounded border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className={inputClasses}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Type</label>
               <div className="flex items-center gap-4 pt-1.5">
-                <label className="flex items-center gap-1.5 text-sm text-gray-700">
+                <label className="flex items-center gap-1.5 text-sm text-slate-700 cursor-pointer">
                   <input
                     type="radio"
                     name="user_type"
                     checked={isInternal}
                     onChange={() => setIsInternal(true)}
+                    className="accent-blue-600"
                   />
                   Internal
                 </label>
-                <label className="flex items-center gap-1.5 text-sm text-gray-700">
+                <label className="flex items-center gap-1.5 text-sm text-slate-700 cursor-pointer">
                   <input
                     type="radio"
                     name="user_type"
                     checked={!isInternal}
                     onChange={() => setIsInternal(false)}
+                    className="accent-blue-600"
                   />
                   External
                 </label>
@@ -109,13 +113,17 @@ export default function UserManagement({ initialProfiles }: { initialProfiles: P
             </div>
           </div>
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          {success && <p className="text-sm text-green-600">{success}</p>}
+          {error && (
+            <div className="rounded-lg bg-red-50 border border-red-100 px-3 py-2 text-sm text-red-700">{error}</div>
+          )}
+          {success && (
+            <div className="rounded-lg bg-emerald-50 border border-emerald-100 px-3 py-2 text-sm text-emerald-700">{success}</div>
+          )}
 
           <button
             type="submit"
             disabled={creating}
-            className="bg-blue-600 text-white rounded px-4 py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bg-blue-600 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
           >
             {creating ? 'Creating...' : 'Create User'}
           </button>
@@ -123,15 +131,15 @@ export default function UserManagement({ initialProfiles }: { initialProfiles: P
       </div>
 
       {/* User list */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">All Users</h2>
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+        <h2 className="text-base font-semibold text-slate-900 mb-4">All Users</h2>
         {profiles.length === 0 ? (
-          <p className="text-gray-500 text-sm">No users found.</p>
+          <p className="text-slate-500 text-sm">No users found.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-200 text-left text-gray-500">
+                <tr className="border-b border-slate-200 text-left text-slate-500">
                   <th className="pb-3 pr-4 font-medium">Display ID</th>
                   <th className="pb-3 pr-4 font-medium">Type</th>
                   <th className="pb-3 pr-4 font-medium">Admin</th>
@@ -140,17 +148,17 @@ export default function UserManagement({ initialProfiles }: { initialProfiles: P
               </thead>
               <tbody>
                 {profiles.map((p) => (
-                  <tr key={p.id} className="border-b border-gray-100">
-                    <td className="py-3 pr-4 text-gray-900">{p.display_id}</td>
-                    <td className="py-3 pr-4 text-gray-900">{p.is_internal ? 'Internal' : 'External'}</td>
+                  <tr key={p.id} className="border-b border-slate-100 last:border-0">
+                    <td className="py-3 pr-4 text-slate-900">{p.display_id}</td>
+                    <td className="py-3 pr-4 text-slate-600">{p.is_internal ? 'Internal' : 'External'}</td>
                     <td className="py-3 pr-4">
                       {p.is_admin ? (
-                        <span className="inline-block rounded-full bg-blue-100 text-blue-800 px-2.5 py-0.5 text-xs font-medium">Admin</span>
+                        <span className="inline-block rounded-full bg-blue-50 text-blue-700 px-2.5 py-0.5 text-xs font-medium">Admin</span>
                       ) : (
-                        <span className="text-gray-400">—</span>
+                        <span className="text-slate-300">—</span>
                       )}
                     </td>
-                    <td className="py-3 text-gray-900">{formatDate(p.created_at)}</td>
+                    <td className="py-3 text-slate-600">{formatDate(p.created_at)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -158,6 +166,6 @@ export default function UserManagement({ initialProfiles }: { initialProfiles: P
           </div>
         )}
       </div>
-    </>
+    </div>
   )
 }

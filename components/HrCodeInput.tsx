@@ -100,11 +100,11 @@ export default function HrCodeInput({ startDate, onContractorFound, onError }: H
 
   return (
     <div>
-      <label htmlFor="hr_code" className="block text-sm font-medium text-gray-700 mb-1">
+      <label htmlFor="hr_code" className="block text-sm font-medium text-slate-700 mb-1.5">
         HR Code
       </label>
       {!startDate && (
-        <p className="text-sm text-amber-600 mb-1">Please enter a start date first.</p>
+        <p className="text-sm text-amber-600 mb-1.5">Please enter a start date first.</p>
       )}
       <div className="relative">
         <input
@@ -114,10 +114,10 @@ export default function HrCodeInput({ startDate, onContractorFound, onError }: H
           onChange={(e) => setHrCode(e.target.value)}
           disabled={!startDate}
           placeholder="e.g. X123456"
-          className="w-full rounded border border-gray-300 px-3 py-2 text-gray-900 uppercase focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:text-gray-400"
+          className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-slate-900 uppercase placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 focus:bg-white disabled:bg-slate-100 disabled:text-slate-400"
         />
         {loading && (
-          <span className="absolute right-3 top-2.5 text-sm text-gray-400">Checking...</span>
+          <span className="absolute right-3.5 top-2.5 text-sm text-slate-400">Checking...</span>
         )}
       </div>
     </div>

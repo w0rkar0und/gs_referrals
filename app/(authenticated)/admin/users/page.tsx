@@ -23,9 +23,9 @@ export default async function AdminUsersPage() {
     .order('created_at', { ascending: false })
 
   return (
-    <div className="min-h-screen bg-gray-50 py-10">
-      <div className="max-w-4xl mx-auto px-4">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">User Management</h1>
+    <div className="py-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6">
+        <h1 className="text-xl font-semibold text-slate-900 mb-6">User Management</h1>
 
         <UserManagement initialProfiles={profiles ?? []} />
       </div>

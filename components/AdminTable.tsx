@@ -12,9 +12,9 @@ function formatDate(dateStr: string): string {
 
 function StatusBadge({ status }: { status: ReferralStatus }) {
   const config = {
-    pending: { label: 'Pending', classes: 'bg-gray-100 text-gray-700' },
-    not_yet_eligible: { label: 'Not Yet Eligible', classes: 'bg-amber-100 text-amber-800' },
-    approved: { label: 'Approved', classes: 'bg-green-100 text-green-800' },
+    pending: { label: 'Pending', classes: 'bg-slate-100 text-slate-600' },
+    not_yet_eligible: { label: 'Not Yet Eligible', classes: 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200' },
+    approved: { label: 'Approved', classes: 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200' },
   }
   const { label, classes } = config[status]
   return (
@@ -118,7 +118,7 @@ export default function AdminTable({ referrals: initialReferrals }: { referrals:
 
   if (referrals.length === 0) {
     return (
-      <div className="text-center py-12 text-gray-500">
+      <div className="text-center py-12 text-slate-500">
         <p>No referrals have been submitted yet.</p>
       </div>
     )
@@ -128,7 +128,7 @@ export default function AdminTable({ referrals: initialReferrals }: { referrals:
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-gray-200 text-left text-gray-500">
+          <tr className="border-b border-slate-200 text-left text-slate-500">
             <th className="pb-3 pr-3 w-8"></th>
             <SortableHeader label="Recruiter" sortKey="recruiter_display_id" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
             <SortableHeader label="Contractor" sortKey="recruited_name" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
@@ -148,12 +148,12 @@ export default function AdminTable({ referrals: initialReferrals }: { referrals:
             const hasDetail = !!r.last_check_snapshot
             return (
               <Fragment key={r.id}>
-                <tr className={`border-b border-gray-100 align-top ${isExpanded ? 'bg-gray-50' : ''}`}>
+                <tr className={`border-b border-slate-100 align-top ${isExpanded ? 'bg-slate-50' : ''}`}>
                   <td className="py-3 pr-1">
                     {hasDetail && (
                       <button
                         onClick={() => setExpandedId(isExpanded ? null : r.id)}
-                        className="text-gray-400 hover:text-gray-700 w-6 h-6 flex items-center justify-center"
+                        className="text-slate-400 hover:text-gray-700 w-6 h-6 flex items-center justify-center"
                         title="View working day breakdown"
                       >
                         <span className={`inline-block transition-transform ${isExpanded ? 'rotate-90' : ''}`}>
@@ -162,9 +162,9 @@ export default function AdminTable({ referrals: initialReferrals }: { referrals:
                       </button>
                     )}
                   </td>
-                  <td className="py-3 pr-3 text-gray-900">{r.recruiter_display_id ?? '—'}</td>
-                  <td className="py-3 pr-3 text-gray-900">{r.recruited_name}</td>
-                  <td className="py-3 pr-3 text-gray-900">{r.recruited_hr_code}</td>
+                  <td className="py-3 pr-3 text-slate-900">{r.recruiter_display_id ?? '—'}</td>
+                  <td className="py-3 pr-3 text-slate-900">{r.recruited_name}</td>
+                  <td className="py-3 pr-3 text-slate-900">{r.recruited_hr_code}</td>
                   <td className="py-3 pr-3">
                     {r.qwylo_active != null ? (
                       <span
@@ -177,11 +177,11 @@ export default function AdminTable({ referrals: initialReferrals }: { referrals:
                       </span>
                     ) : '—'}
                     {r.qwylo_status_date && (
-                      <span className="block text-xs text-gray-400 mt-0.5">{formatDate(r.qwylo_status_date)}</span>
+                      <span className="block text-xs text-slate-400 mt-0.5">{formatDate(r.qwylo_status_date)}</span>
                     )}
                   </td>
-                  <td className="py-3 pr-3 text-gray-900">{formatDate(r.start_date)}</td>
-                  <td className="py-3 pr-3 text-gray-900">
+                  <td className="py-3 pr-3 text-slate-900">{formatDate(r.start_date)}</td>
+                  <td className="py-3 pr-3 text-slate-900">
                     {r.working_days_total != null ? (
                       <span
                         className={hasDetail ? 'cursor-pointer text-blue-600 hover:text-blue-800 underline decoration-dotted' : ''}
@@ -191,7 +191,7 @@ export default function AdminTable({ referrals: initialReferrals }: { referrals:
                       </span>
                     ) : '—'}
                   </td>
-                  <td className="py-3 pr-3 text-gray-900">
+                  <td className="py-3 pr-3 text-slate-900">
                     {r.last_checked_at ? formatDate(r.last_checked_at) : '—'}
                   </td>
                   <td className="py-3 pr-3">
@@ -200,7 +200,7 @@ export default function AdminTable({ referrals: initialReferrals }: { referrals:
                         value={r.status}
                         onChange={(e) => handleStatusChange(r.id, e.target.value as ReferralStatus)}
                         disabled={savingId === r.id}
-                        className="rounded border border-gray-300 px-2 py-1 text-xs"
+                        className="rounded border border-slate-200 px-2 py-1 text-xs"
                       >
                         <option value="pending">Pending</option>
                         <option value="not_yet_eligible">Not Yet Eligible</option>
@@ -225,7 +225,7 @@ export default function AdminTable({ referrals: initialReferrals }: { referrals:
                           type="text"
                           value={editingNotes[r.id]}
                           onChange={(e) => setEditingNotes((prev) => ({ ...prev, [r.id]: e.target.value }))}
-                          className="rounded border border-gray-300 px-2 py-1 text-xs w-40"
+                          className="rounded border border-slate-200 px-2 py-1 text-xs w-40"
                         />
                         <button
                           onClick={() => handleNotesSave(r.id)}
@@ -240,7 +240,7 @@ export default function AdminTable({ referrals: initialReferrals }: { referrals:
                             delete next[r.id]
                             return next
                           })}
-                          className="text-xs text-gray-500 hover:text-gray-700"
+                          className="text-xs text-slate-500 hover:text-gray-700"
                         >
                           Cancel
                         </button>
@@ -248,16 +248,16 @@ export default function AdminTable({ referrals: initialReferrals }: { referrals:
                     ) : (
                       <span
                         onClick={() => setEditingNotes((prev) => ({ ...prev, [r.id]: r.approval_notes ?? '' }))}
-                        className="text-gray-900 cursor-pointer hover:text-blue-600"
+                        className="text-slate-900 cursor-pointer hover:text-blue-600"
                       >
-                        {r.approval_notes || <span className="text-gray-400 italic">Click to add</span>}
+                        {r.approval_notes || <span className="text-slate-400 italic">Click to add</span>}
                       </span>
                     )}
                   </td>
                 </tr>
                 {isExpanded && hasDetail && (
-                  <tr className="bg-gray-50">
-                    <td colSpan={10} className="px-6 py-4 border-b border-gray-200">
+                  <tr className="bg-slate-50">
+                    <td colSpan={10} className="px-6 py-4 border-b border-slate-200">
                       <CheckDetailView
                         detail={r.last_check_snapshot as never}
                         checkedAt={r.last_checked_at ?? undefined}

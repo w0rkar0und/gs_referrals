@@ -84,7 +84,7 @@ export default function ChecksPanel({
   return (
     <div className="space-y-6">
       {/* Command panel */}
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-3">Run Commands</h2>
         <p className="text-sm text-gray-500 mb-4">
           These commands must be run from a machine with Greythorn network access (e.g. via Claude Code or terminal).
@@ -94,7 +94,7 @@ export default function ChecksPanel({
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">1. Contractor sync (run first to update statuses)</label>
             <div className="flex gap-2">
-              <code className="flex-1 bg-gray-900 text-green-400 rounded px-4 py-2.5 text-sm font-mono select-all overflow-x-auto">
+              <code className="flex-1 bg-slate-900 text-emerald-400 rounded-lg px-4 py-2.5 text-sm font-mono select-all overflow-x-auto">
                 python scripts/contractor_sync.py
               </code>
               <button
@@ -109,7 +109,7 @@ export default function ChecksPanel({
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">2. Check all non-approved referrals</label>
             <div className="flex gap-2">
-              <code className="flex-1 bg-gray-900 text-green-400 rounded px-4 py-2.5 text-sm font-mono select-all overflow-x-auto">
+              <code className="flex-1 bg-slate-900 text-emerald-400 rounded-lg px-4 py-2.5 text-sm font-mono select-all overflow-x-auto">
                 {allPendingCommand}
               </code>
               <button
@@ -127,7 +127,7 @@ export default function ChecksPanel({
                 3. Check selected ({selectedCodes.length})
               </label>
               <div className="flex gap-2">
-                <code className="flex-1 bg-gray-900 text-green-400 rounded px-4 py-2.5 text-sm font-mono select-all overflow-x-auto whitespace-nowrap">
+                <code className="flex-1 bg-slate-900 text-emerald-400 rounded-lg px-4 py-2.5 text-sm font-mono select-all overflow-x-auto whitespace-nowrap">
                   {singleCommand}
                 </code>
                 <button
@@ -143,7 +143,7 @@ export default function ChecksPanel({
       </div>
 
       {/* Referrals table */}
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <h2 className="text-lg font-semibold text-gray-900">

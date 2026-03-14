@@ -39,17 +39,17 @@ export default async function ReferralsPage({ searchParams }: { searchParams: Pr
   const justSubmitted = params.submitted === '1'
 
   return (
-    <div className="min-h-screen bg-gray-50 py-10">
-      <div className="max-w-3xl mx-auto px-4">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">My Referrals</h1>
+    <div className="py-8">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6">
+        <h1 className="text-xl font-semibold text-slate-900 mb-6">My Referrals</h1>
 
         {justSubmitted && (
-          <div className="mb-4 rounded bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-800">
+          <div className="mb-4 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-800">
             Referral submitted successfully.
           </div>
         )}
 
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
           <ReferralTable referrals={enrichedReferrals} />
         </div>
       </div>
