@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import type { Referral, ReferralStatus } from '@/lib/types'
 import CheckDetailView from './CheckDetailView'
+import SortableHeader, { useSort } from './SortableHeader'
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr)
@@ -42,6 +43,7 @@ export default function AdminTable({ referrals: initialReferrals }: { referrals:
   const [editingNotes, setEditingNotes] = useState<Record<string, string>>({})
   const [savingId, setSavingId] = useState<string | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const { sorted, sortKey, sortDir, handleSort } = useSort(referrals, 'submitted_at', 'desc')
 
   async function handleStatusChange(id: string, newStatus: ReferralStatus) {
     setSavingId(id)
@@ -126,18 +128,18 @@ export default function AdminTable({ referrals: initialReferrals }: { referrals:
         <thead>
           <tr className="border-b border-gray-200 text-left text-gray-500">
             <th className="pb-3 pr-3 w-8"></th>
-            <th className="pb-3 pr-3 font-medium">Recruiter</th>
-            <th className="pb-3 pr-3 font-medium">Contractor</th>
-            <th className="pb-3 pr-3 font-medium">HR Code</th>
-            <th className="pb-3 pr-3 font-medium">Start Date</th>
-            <th className="pb-3 pr-3 font-medium">Working Days</th>
-            <th className="pb-3 pr-3 font-medium">Last Checked</th>
-            <th className="pb-3 pr-3 font-medium">Status</th>
+            <SortableHeader label="Recruiter" sortKey="recruiter_display_id" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
+            <SortableHeader label="Contractor" sortKey="recruited_name" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
+            <SortableHeader label="HR Code" sortKey="recruited_hr_code" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
+            <SortableHeader label="Start Date" sortKey="start_date" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
+            <SortableHeader label="Working Days" sortKey="working_days_total" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
+            <SortableHeader label="Last Checked" sortKey="last_checked_at" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
+            <SortableHeader label="Status" sortKey="status" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
             <th className="pb-3 font-medium">Notes</th>
           </tr>
         </thead>
         <tbody>
-          {referrals.map((r) => {
+          {sorted.map((r) => {
             const isEditingNotes = r.id in editingNotes
             const isExpanded = expandedId === r.id
             const hasDetail = !!r.last_check_snapshot

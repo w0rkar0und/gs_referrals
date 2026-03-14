@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import SortableHeader, { useSort } from '@/components/SortableHeader'
 
 interface Referral {
   recruited_hr_code: string
@@ -51,6 +52,7 @@ export default function ChecksPanel({
   const [showAll, setShowAll] = useState(false)
 
   const displayList = showAll ? allReferrals : pendingReferrals
+  const { sorted, sortKey, sortDir, handleSort } = useSort(displayList, 'start_date', 'asc')
 
   function toggleSelect(hrCode: string) {
     setSelected((prev) => {
@@ -159,20 +161,20 @@ export default function ChecksPanel({
                   <th className="pb-3 pr-3 w-8">
                     <input
                       type="checkbox"
-                      checked={displayList.length > 0 && displayList.every((r) => selected.has(r.recruited_hr_code))}
+                      checked={sorted.length > 0 && sorted.every((r) => selected.has(r.recruited_hr_code))}
                       onChange={(e) => e.target.checked ? selectAllVisible() : clearSelection()}
                     />
                   </th>
-                  <th className="pb-3 pr-3 font-medium">HR Code</th>
-                  <th className="pb-3 pr-3 font-medium">Contractor</th>
-                  <th className="pb-3 pr-3 font-medium">Start Date</th>
-                  <th className="pb-3 pr-3 font-medium">Status</th>
-                  <th className="pb-3 pr-3 font-medium">Working Days</th>
-                  <th className="pb-3 font-medium">Last Checked</th>
+                  <SortableHeader label="HR Code" sortKey="recruited_hr_code" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
+                  <SortableHeader label="Contractor" sortKey="recruited_name" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
+                  <SortableHeader label="Start Date" sortKey="start_date" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
+                  <SortableHeader label="Status" sortKey="status" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
+                  <SortableHeader label="Working Days" sortKey="working_days_total" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
+                  <SortableHeader label="Last Checked" sortKey="last_checked_at" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
                 </tr>
               </thead>
               <tbody>
-                {displayList.map((r) => (
+                {sorted.map((r) => (
                   <tr
                     key={r.recruited_hr_code}
                     className={`border-b border-gray-100 cursor-pointer hover:bg-gray-50 ${

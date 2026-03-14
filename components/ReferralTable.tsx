@@ -1,6 +1,7 @@
 'use client'
 
 import type { Referral } from '@/lib/types'
+import SortableHeader, { useSort } from './SortableHeader'
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr)
@@ -22,6 +23,8 @@ function StatusBadge({ status }: { status: Referral['status'] }) {
 }
 
 export default function ReferralTable({ referrals }: { referrals: Referral[] }) {
+  const { sorted, sortKey, sortDir, handleSort } = useSort(referrals, 'submitted_at', 'desc')
+
   if (referrals.length === 0) {
     return (
       <div className="text-center py-12 text-gray-500">
@@ -35,15 +38,15 @@ export default function ReferralTable({ referrals }: { referrals: Referral[] }) 
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-gray-200 text-left text-gray-500">
-            <th className="pb-3 pr-4 font-medium">Contractor Name</th>
-            <th className="pb-3 pr-4 font-medium">HR Code</th>
-            <th className="pb-3 pr-4 font-medium">Start Date</th>
-            <th className="pb-3 pr-4 font-medium">Submitted</th>
-            <th className="pb-3 font-medium">Status</th>
+            <SortableHeader label="Contractor Name" sortKey="recruited_name" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} className="pr-4" />
+            <SortableHeader label="HR Code" sortKey="recruited_hr_code" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} className="pr-4" />
+            <SortableHeader label="Start Date" sortKey="start_date" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} className="pr-4" />
+            <SortableHeader label="Submitted" sortKey="submitted_at" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} className="pr-4" />
+            <SortableHeader label="Status" sortKey="status" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
           </tr>
         </thead>
         <tbody>
-          {referrals.map((r) => (
+          {sorted.map((r) => (
             <tr key={r.id} className="border-b border-gray-100">
               <td className="py-3 pr-4 text-gray-900">{r.recruited_name}</td>
               <td className="py-3 pr-4 text-gray-900">{r.recruited_hr_code}</td>
