@@ -1,0 +1,33 @@
+name: Contractor Sync
+
+on:
+  schedule:
+    - cron: '0 11 * * *'
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: self-hosted
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install supabase pyodbc python-dotenv
+
+      - name: Run contractor sync
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GT_DB_SERVER: ${{ secrets.GT_DB_SERVER }}
+          GT_DB_NAME: ${{ secrets.GT_DB_NAME }}
+          GT_DB_USER: ${{ secrets.GT_DB_USER }}
+          GT_DB_PASSWORD: ${{ secrets.GT_DB_PASSWORD }}
+          GT_DB_PORT: ${{ secrets.GT_DB_PORT }}
+          SYNC_TRIGGERED_BY: scheduled
+        run: python scripts/contractor_sync.py
