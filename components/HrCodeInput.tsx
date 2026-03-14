@@ -56,6 +56,23 @@ export default function HrCodeInput({ startDate, onContractorFound, onError }: H
         return
       }
 
+      // REF-001: duplicate check (before REF-002, as duplicate answers rehire question)
+      const { data: existing } = await supabase
+        .from('referrals')
+        .select('id')
+        .eq('recruited_hr_code', code)
+        .limit(1)
+
+      if (existing && existing.length > 0) {
+        onContractorFound(null)
+        onError(
+          'This HR code has already been registered by another user. ' +
+          'If you believe this is an error, please contact SLT quoting reference REF-001.'
+        )
+        setLoading(false)
+        return
+      }
+
       // REF-002: rehire within 6 months check
       if (data.last_worked_date && startDate) {
         const lastWorked = new Date(data.last_worked_date)
