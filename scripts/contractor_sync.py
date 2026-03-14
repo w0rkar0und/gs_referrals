@@ -29,12 +29,18 @@ SELECT
     up.FirstName,
     up.LastName,
     CASE WHEN c.CurrentRecruitmentStatusId = 12 THEN 1 ELSE 0 END AS IsActive,
-    CONVERT(VARCHAR(10), MAX(CAST(d.Date AS DATE)), 120) AS LastWorkedDate
+    CONVERT(VARCHAR(10), MAX(CAST(d.Date AS DATE)), 120) AS LastWorkedDate,
+    (
+        SELECT MAX(h.CreatedAt)
+        FROM ContractorRecruitmentStatusHistory h
+        WHERE h.ContractorId = c.ContractorId
+          AND h.RecruitmentStatusId = c.CurrentRecruitmentStatusId
+    ) AS StatusChangedAt
 FROM Contractor c
 JOIN [User] u ON u.UserId = c.UserId
 JOIN UserProfile up ON up.UserId = u.UserId
 LEFT JOIN Debrief d ON d.ContractorId = c.ContractorId AND d.IsApproved = 1
-GROUP BY c.HrCode, up.FirstName, up.LastName, c.CurrentRecruitmentStatusId
+GROUP BY c.HrCode, up.FirstName, up.LastName, c.CurrentRecruitmentStatusId, c.ContractorId
 ORDER BY c.HrCode
 """
 
@@ -70,6 +76,7 @@ def main():
                 "last_name": row.LastName.strip(),
                 "is_active": bool(row.IsActive),
                 "last_worked_date": row.LastWorkedDate if row.LastWorkedDate else None,
+                "status_changed_at": row.StatusChangedAt.isoformat() if row.StatusChangedAt else None,
                 "synced_at": datetime.now(tz=__import__('datetime').UTC).isoformat(),
             })
 

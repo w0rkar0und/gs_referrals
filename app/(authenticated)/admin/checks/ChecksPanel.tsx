@@ -11,7 +11,7 @@ interface Referral {
   last_checked_at: string | null
   start_date: string
   qwylo_active?: boolean | null
-  qwylo_synced_at?: string | null
+  qwylo_status_date?: string | null
 }
 
 function formatDate(dateStr: string | null): string {
@@ -201,7 +201,7 @@ export default function ChecksPanel({
                           className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${
                             r.qwylo_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                           }`}
-                          title={r.qwylo_synced_at ? `Synced: ${formatDate(r.qwylo_synced_at)}` : ''}
+                          title={r.qwylo_status_date ? `Synced: ${formatDate(r.qwylo_status_date)}` : ''}
                         >
                           {r.qwylo_active ? 'Active' : 'Inactive'}
                         </span>

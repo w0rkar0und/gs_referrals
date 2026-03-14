@@ -19,11 +19,11 @@ export default async function ReferralsPage({ searchParams }: { searchParams: Pr
   const { data: contractors } = hrCodes.length > 0
     ? await supabase
         .from('contractors')
-        .select('hr_code, is_active, synced_at')
+        .select('hr_code, is_active, status_changed_at')
         .in('hr_code', hrCodes)
     : { data: [] }
 
-  const contractorMap = new Map<string, { is_active: boolean; synced_at: string }>((contractors ?? []).map((c: { hr_code: string; is_active: boolean; synced_at: string }) => [c.hr_code, { is_active: c.is_active, synced_at: c.synced_at }]))
+  const contractorMap = new Map<string, { is_active: boolean; status_changed_at: string }>((contractors ?? []).map((c: { hr_code: string; is_active: boolean; status_changed_at: string }) => [c.hr_code, { is_active: c.is_active, status_changed_at: c.status_changed_at }]))
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const enrichedReferrals = (referrals ?? []).map((r: any) => {
@@ -31,7 +31,7 @@ export default async function ReferralsPage({ searchParams }: { searchParams: Pr
     return {
       ...r,
       qwylo_active: contractor?.is_active ?? null,
-      qwylo_synced_at: contractor?.synced_at ?? null,
+      qwylo_status_date: contractor?.status_changed_at ?? null,
     }
   })
 
