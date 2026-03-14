@@ -4,6 +4,7 @@ import { useState } from 'react'
 import type { Referral, ReferralStatus } from '@/lib/types'
 import CheckDetailView from './CheckDetailView'
 import SortableHeader, { useSort } from './SortableHeader'
+import SearchInput from './SearchInput'
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr)
@@ -45,7 +46,11 @@ export default function AdminTable({ referrals: initialReferrals }: { referrals:
   const [editingNotes, setEditingNotes] = useState<Record<string, string>>({})
   const [savingId, setSavingId] = useState<string | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
-  const { sorted, sortKey, sortDir, handleSort } = useSort(referrals, 'submitted_at', 'desc')
+  const [search, setSearch] = useState('')
+  const filtered = referrals.filter((r) =>
+    !search || r.recruited_hr_code.toLowerCase().includes(search.toLowerCase())
+  )
+  const { sorted, sortKey, sortDir, handleSort } = useSort(filtered, 'submitted_at', 'desc')
 
   async function handleStatusChange(id: string, newStatus: ReferralStatus) {
     setSavingId(id)
@@ -125,7 +130,11 @@ export default function AdminTable({ referrals: initialReferrals }: { referrals:
   }
 
   return (
-    <div className="overflow-x-auto">
+    <div>
+      <div className="mb-4">
+        <SearchInput value={search} onChange={setSearch} />
+      </div>
+      <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-slate-200 text-left text-slate-500">
@@ -273,6 +282,7 @@ export default function AdminTable({ referrals: initialReferrals }: { referrals:
           })}
         </tbody>
       </table>
+      </div>
     </div>
   )
 }

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import SortableHeader, { useSort } from '@/components/SortableHeader'
+import SearchInput from '@/components/SearchInput'
 
 interface Referral {
   recruited_hr_code: string
@@ -52,9 +53,13 @@ export default function ChecksPanel({
 }) {
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [showAll, setShowAll] = useState(false)
+  const [search, setSearch] = useState('')
 
   const displayList = showAll ? allReferrals : pendingReferrals
-  const { sorted, sortKey, sortDir, handleSort } = useSort(displayList, 'start_date', 'asc')
+  const filtered = displayList.filter((r) =>
+    !search || r.recruited_hr_code.toLowerCase().includes(search.toLowerCase())
+  )
+  const { sorted, sortKey, sortDir, handleSort } = useSort(filtered, 'start_date', 'asc')
 
   function toggleSelect(hrCode: string) {
     setSelected((prev) => {
@@ -144,27 +149,30 @@ export default function ChecksPanel({
 
       {/* Referrals table */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div className="flex items-center gap-3">
-            <h2 className="text-lg font-semibold text-gray-900">
+            <h2 className="text-base font-semibold text-slate-900">
               {showAll ? 'All Referrals' : 'Pending / Not Yet Eligible'}
             </h2>
-            <span className="text-sm text-gray-500">({displayList.length})</span>
+            <span className="text-sm text-slate-500">({filtered.length})</span>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => { setShowAll(!showAll); clearSelection() }}
-              className="text-sm text-blue-600 hover:text-blue-800"
-            >
-              {showAll ? 'Show pending only' : 'Show all referrals'}
-            </button>
-            <span className="text-gray-300">|</span>
-            <button onClick={selectAllVisible} className="text-sm text-blue-600 hover:text-blue-800">
-              Select all
-            </button>
-            <button onClick={clearSelection} className="text-sm text-gray-500 hover:text-gray-700">
-              Clear
-            </button>
+          <div className="flex items-center gap-3">
+            <SearchInput value={search} onChange={setSearch} />
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => { setShowAll(!showAll); clearSelection() }}
+                className="text-sm text-blue-600 hover:text-blue-800 whitespace-nowrap"
+              >
+                {showAll ? 'Pending only' : 'Show all'}
+              </button>
+              <span className="text-slate-300">|</span>
+              <button onClick={selectAllVisible} className="text-sm text-blue-600 hover:text-blue-800 whitespace-nowrap">
+                Select all
+              </button>
+              <button onClick={clearSelection} className="text-sm text-slate-500 hover:text-slate-700 whitespace-nowrap">
+                Clear
+              </button>
+            </div>
           </div>
         </div>
 

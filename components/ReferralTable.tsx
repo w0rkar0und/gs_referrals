@@ -1,7 +1,9 @@
 'use client'
 
+import { useState } from 'react'
 import type { Referral } from '@/lib/types'
 import SortableHeader, { useSort } from './SortableHeader'
+import SearchInput from './SearchInput'
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr)
@@ -28,7 +30,11 @@ interface EnrichedReferral extends Referral {
 }
 
 export default function ReferralTable({ referrals }: { referrals: EnrichedReferral[] }) {
-  const { sorted, sortKey, sortDir, handleSort } = useSort(referrals, 'submitted_at', 'desc')
+  const [search, setSearch] = useState('')
+  const filtered = referrals.filter((r) =>
+    !search || r.recruited_hr_code.toLowerCase().includes(search.toLowerCase())
+  )
+  const { sorted, sortKey, sortDir, handleSort } = useSort(filtered, 'submitted_at', 'desc')
 
   if (referrals.length === 0) {
     return (
@@ -39,7 +45,11 @@ export default function ReferralTable({ referrals }: { referrals: EnrichedReferr
   }
 
   return (
-    <div className="overflow-x-auto">
+    <div>
+      <div className="mb-4">
+        <SearchInput value={search} onChange={setSearch} />
+      </div>
+      <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-slate-200 text-left text-slate-500">
@@ -78,6 +88,7 @@ export default function ReferralTable({ referrals }: { referrals: EnrichedReferr
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   )
 }
