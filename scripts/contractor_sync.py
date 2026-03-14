@@ -28,19 +28,23 @@ SELECT
     c.HrCode,
     up.FirstName,
     up.LastName,
-    CASE WHEN c.CurrentRecruitmentStatusId = 12 THEN 1 ELSE 0 END AS IsActive,
+    COALESCE(acct.Active, 0) AS IsActive,
     CONVERT(VARCHAR(10), MAX(CAST(d.Date AS DATE)), 120) AS LastWorkedDate,
-    (
-        SELECT MAX(h.CreatedAt)
-        FROM ContractorRecruitmentStatusHistory h
-        WHERE h.ContractorId = c.ContractorId
-          AND h.RecruitmentStatusId = c.CurrentRecruitmentStatusId
-    ) AS StatusChangedAt
+    acct.CreatedAt AS StatusChangedAt
 FROM Contractor c
 JOIN [User] u ON u.UserId = c.UserId
 JOIN UserProfile up ON up.UserId = u.UserId
 LEFT JOIN Debrief d ON d.ContractorId = c.ContractorId AND d.IsApproved = 1
-GROUP BY c.HrCode, up.FirstName, up.LastName, c.CurrentRecruitmentStatusId, c.ContractorId
+LEFT JOIN (
+    SELECT h.ContractorId, h.Active, h.CreatedAt
+    FROM ContractorAccountStatusHistory h
+    INNER JOIN (
+        SELECT ContractorId, MAX(CreatedAt) AS MaxCreatedAt
+        FROM ContractorAccountStatusHistory
+        GROUP BY ContractorId
+    ) latest ON h.ContractorId = latest.ContractorId AND h.CreatedAt = latest.MaxCreatedAt
+) acct ON acct.ContractorId = c.ContractorId
+GROUP BY c.HrCode, up.FirstName, up.LastName, acct.Active, acct.CreatedAt
 ORDER BY c.HrCode
 """
 
