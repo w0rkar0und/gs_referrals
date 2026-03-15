@@ -871,4 +871,109 @@ Key rules repeated here for emphasis:
 
 ---
 
-*End of CLAUDE.md — Begin with PHASE 0.*
+## Current State (as of 15 March 2026)
+
+### Build Status — ALL PHASES COMPLETE
+
+| Phase | Status | Notes |
+|---|---|---|
+| 0 — Prerequisites | Done | Node 23.7, Python 3.14, Supabase CLI 2.75 |
+| 1 — Repo Init | Done | Next.js 16, Supabase SSR, TypeScript |
+| 2 — Database Schema | Done | All tables, RLS, trigger (with `SET search_path = public` fix) |
+| 3A — Contractor Sync | Done | Uses `ContractorAccountStatusHistory` for active/inactive |
+| 3B — Self-hosted Runner | Parked | Not on work PC — sync runs manually for now |
+| 3C — Windows Sleep | Parked | Dependent on 3B |
+| 4 — Missed Sync Cron | Done | Vercel cron at 13:00 UTC |
+| 5 — Auth + Login | Done | Username maps to internal/external email domains |
+| 6 — Referral Submission | Done | REF-001, REF-002, REF-003 validation |
+| 7 — Recruiter Portal | Done | My Referrals with sortable table + HR code search |
+| 8 — Admin Dashboard | Done | All referrals, expandable check detail, inline edit, reset |
+| 9 — User Provisioning | Done | Create users via admin page |
+| 10 — Referral Check Script | Done | With email summary via Resend |
+| 11 — Vercel Deployment | Done | Live at www.gsapps.co |
+
+### Production URLs & Services
+
+- **App:** https://www.gsapps.co (custom domain on Vercel)
+- **Supabase:** https://fjhkowrxuczkrafczcru.supabase.co
+- **GitHub:** https://github.com/w0rkar0und/gs_referrals
+- **Resend sender domain:** greythornservices.uk
+- **Admin email:** miten@greythorn.services
+
+### Vercel Cron Jobs (4 active)
+
+| Schedule | Path | Purpose |
+|---|---|---|
+| 10:30 daily | `/api/cron/sync-reminder` | Email reminder to run contractor sync |
+| 13:00 daily | `/api/cron/check-sync` | Alert if sync hasn't run today |
+| 23:05 daily | `/api/cron/referral-digest` | Daily digest of new referral submissions |
+
+### Email Notifications
+
+| Trigger | Source | Recipients |
+|---|---|---|
+| Sync reminder (10:30) | Vercel cron | NOTIFY_TO_EMAILS |
+| Missed sync alert (13:00) | Vercel cron | NOTIFY_TO_EMAILS |
+| Referral check results | `referral_check.py` | NOTIFY_TO_EMAILS in scripts/.env |
+| New referrals digest (23:05) | Vercel cron | NOTIFY_TO_EMAILS |
+
+### Users Seeded
+
+- **Admin:** m.patel (external, password: Goodbye36, is_admin: true)
+- **12 recruiter accounts** created from 2025 Referrals spreadsheet (all internal, password: Greythorn2026)
+- **165 referrals** seeded from `seed_data/2025 Referrals.xlsx`
+- **3,439 contractors** synced from Greythorn
+
+### Error Codes
+
+| Code | Check | Location |
+|---|---|---|
+| REF-001 | Duplicate HR code | HrCodeInput (checked before REF-002) |
+| REF-002 | Rehire within 6 months | HrCodeInput |
+| REF-003 | Start date >7 days in past | ReferralForm |
+
+### Key Technical Decisions & Fixes Made During Build
+
+1. **Active/inactive status** uses `ContractorAccountStatusHistory.Active` (not `CurrentRecruitmentStatusId`). A contractor can be "Hired" but deactivated at account level.
+2. **Status change date** (`status_changed_at`) comes from `ContractorAccountStatusHistory.CreatedAt`. Contractors with no history default to active with no date.
+3. **ODBC Driver 18** used on Mac (not 17 as in original spec).
+4. **Profile trigger** required `SET search_path = public` to work correctly.
+5. **REF-001 duplicate check** runs during HR code validation (not just on insert), and before REF-002.
+6. **Authenticated pages** use `(authenticated)` route group for shared navbar layout.
+7. **`ContractorAccountStatusHistory`** — contractors with no entries default to `COALESCE(acct.Active, 1)` (active).
+8. **Greythorn DB is Azure SQL** (`greythorn.database.windows.net`) — accessible from any internet-connected machine, not just work PC.
+
+### Route Structure
+
+```
+/                          → Redirects to /login or /referrals
+/login                     → Username/password login
+/(authenticated)/
+  referrals/               → My Referrals (recruiter view)
+  submit/                  → New referral form
+  admin/                   → Admin dashboard (all referrals, expandable details)
+  admin/checks/            → Run Checks (sync + check commands, selectable table)
+  admin/users/             → User provisioning
+  api/admin/update-referral → Admin referral updates (service role)
+  api/admin/create-user    → Admin user creation (service role)
+/api/cron/sync-reminder    → Daily sync reminder email
+/api/cron/check-sync       → Missed sync detection + alert
+/api/cron/referral-digest  → Daily new referrals digest
+```
+
+### UI Features Added Beyond Original Spec
+
+- Sortable columns on all tables (click header to toggle asc/desc)
+- HR code search on all tables
+- Expandable check detail view (working day breakdown by week)
+- Reset button to clear check data and revert to pending
+- Qwylo Status column (Active/Inactive from Greythorn with status change date)
+- Modern UI design (slate palette, rounded cards, sticky navbar, focus rings)
+- Navbar with admin-only links (Dashboard, Run Checks, Users)
+- Sign out + user avatar in navbar
+- Run Checks page with numbered copy-paste commands (sync → check all → check selected)
+- Check run email summary (approved/not yet eligible/skipped/errors)
+
+---
+
+*End of CLAUDE.md*
