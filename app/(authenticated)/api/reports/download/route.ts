@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { generateDepositExcel } from '@/lib/excel-deposit'
 import { generateWorkingDaysExcel } from '@/lib/excel-working-days'
+import { generateWorkingDaysByClientExcel } from '@/lib/excel-working-days-by-client'
 
 export async function POST(request: NextRequest) {
   const cookieStore = await cookies()
@@ -63,6 +64,10 @@ export async function POST(request: NextRequest) {
     } else if (reportType === 'working-days') {
       buffer = await generateWorkingDaysExcel(reportData)
       filename = `Working_Days_${hrCode}_${date}.xlsx`
+    } else if (reportType === 'working-days-by-client') {
+      buffer = await generateWorkingDaysByClientExcel(reportData)
+      const epoch = reportData.targetEpoch
+      filename = `Working_Days_by_Client_Wk${epoch?.week ?? 0}_${epoch?.year ?? 0}_${date}.xlsx`
     } else {
       return NextResponse.json({ error: 'Unknown report type.' }, { status: 400 })
     }

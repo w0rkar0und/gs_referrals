@@ -321,6 +321,83 @@ app.post('/report/working-days', async (req, res) => {
   }
 });
 
+// ── Working Days by Client Report ──
+app.post('/report/working-days-by-client', async (req, res) => {
+  try {
+    const p = await getPool();
+
+    // Resolve target epoch year/week (last completed week)
+    const epochResult = await p.request().query(`
+      SELECT
+        CASE WHEN GtEpochWeek = 1 THEN GtEpochYear - 1 ELSE GtEpochYear END AS TargetYear,
+        CASE WHEN GtEpochWeek = 1
+             THEN (SELECT MAX(GtEpochWeek) FROM Calendar WHERE GtEpochYear = (SELECT GtEpochYear - 1 FROM Calendar WHERE Date = CAST(GETDATE() AS DATE)))
+             ELSE GtEpochWeek - 1 END AS TargetWeek
+      FROM Calendar WHERE Date = CAST(GETDATE() AS DATE)
+    `);
+    const { TargetYear, TargetWeek } = epochResult.recordset[0];
+
+    // Main query: working day counts by client/branch/contract type
+    const result = await p.request().query(`
+      SELECT
+          CONVERT(VARCHAR(50), cl.ClientName)       AS ClientName,
+          CONVERT(VARCHAR(50), b.BranchName)        AS BranchName,
+          CONVERT(VARCHAR(80), ct.ContractTypeName) AS ContractTypeName,
+          COUNT(*)                                  AS ShiftCount,
+          SUM(
+              CASE
+                  WHEN ct.ContractTypeName = 'OSM'          THEN 0.0
+                  WHEN ct.ContractTypeName = 'Support'       THEN 0.0
+                  WHEN ct.ContractTypeName LIKE 'Sameday_6%' THEN 0.5
+                  ELSE 1.0
+              END
+          )                                         AS WeightedDays,
+          SUM(SUM(
+              CASE
+                  WHEN ct.ContractTypeName = 'OSM'          THEN 0.0
+                  WHEN ct.ContractTypeName = 'Support'       THEN 0.0
+                  WHEN ct.ContractTypeName LIKE 'Sameday_6%' THEN 0.5
+                  ELSE 1.0
+              END
+          )) OVER (PARTITION BY cl.ClientName, b.BranchName) AS SiteTotal
+      FROM Debrief d
+      JOIN Contractor c    ON c.ContractorId    = d.ContractorId
+      JOIN ContractType ct ON ct.ContractTypeId = d.ContractTypeId
+      JOIN Client cl       ON cl.ClientId       = ct.ClientId
+      JOIN Branch b        ON b.BranchId        = d.BranchId
+      JOIN Calendar cal    ON cal.Date          = CAST(d.Date AS DATE)
+      WHERE d.IsApproved = 1
+        AND cal.GtEpochYear = (
+            SELECT CASE WHEN GtEpochWeek = 1
+                        THEN GtEpochYear - 1
+                        ELSE GtEpochYear END
+            FROM Calendar WHERE Date = CAST(GETDATE() AS DATE)
+        )
+        AND cal.GtEpochWeek = (
+            SELECT CASE WHEN GtEpochWeek = 1
+                        THEN (SELECT MAX(GtEpochWeek) FROM Calendar
+                              WHERE GtEpochYear = (
+                                  SELECT GtEpochYear - 1
+                                  FROM Calendar
+                                  WHERE Date = CAST(GETDATE() AS DATE)
+                              ))
+                        ELSE GtEpochWeek - 1 END
+            FROM Calendar WHERE Date = CAST(GETDATE() AS DATE)
+        )
+      GROUP BY cl.ClientName, b.BranchName, ct.ContractTypeName
+      ORDER BY cl.ClientName, b.BranchName, ct.ContractTypeName
+    `);
+
+    res.json({
+      targetEpoch: { year: TargetYear, week: TargetWeek },
+      rows: result.recordset,
+    });
+  } catch (err) {
+    console.error('Working days by client report error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Start server ──
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

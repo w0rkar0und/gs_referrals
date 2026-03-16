@@ -3,13 +3,17 @@
 import { useState } from 'react'
 import DepositReport from '@/components/reports/DepositReport'
 import WorkingDaysReport from '@/components/reports/WorkingDaysReport'
+import WorkingDaysByClientReport from '@/components/reports/WorkingDaysByClientReport'
 
-type ReportType = 'deposit' | 'working-days'
+type ReportType = 'deposit' | 'working-days' | 'working-days-by-client'
 
 const REPORT_LABELS: Record<ReportType, string> = {
   deposit: 'Deposit Report',
   'working-days': 'Deposit - Working Day Count',
+  'working-days-by-client': 'Working Days by Client',
 }
+
+const REPORTS_WITHOUT_HR_CODE: ReportType[] = ['working-days-by-client']
 
 const inputClasses = "w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 focus:bg-white uppercase"
 
@@ -32,10 +36,15 @@ export default function ReportRunner({ allowedReports }: Props) {
   const [emailSuccess, setEmailSuccess] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
 
+  const needsHrCode = !REPORTS_WITHOUT_HR_CODE.includes(reportType)
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    const code = hrCode.trim().toUpperCase()
-    if (!code) return
+
+    if (needsHrCode) {
+      const code = hrCode.trim().toUpperCase()
+      if (!code) return
+    }
 
     setLoading(true)
     setError(null)
@@ -44,10 +53,14 @@ export default function ReportRunner({ allowedReports }: Props) {
     setActionError(null)
 
     try {
+      const body = needsHrCode
+        ? JSON.stringify({ hrCode: hrCode.trim().toUpperCase() })
+        : JSON.stringify({})
+
       const res = await fetch(`/api/reports/${reportType}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ hrCode: code }),
+        body,
       })
 
       const data = await res.json()
@@ -139,22 +152,24 @@ export default function ReportRunner({ allowedReports }: Props) {
       {/* Report selector */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
         <form onSubmit={handleSubmit} autoComplete="off" className="flex flex-col sm:flex-row items-end gap-4">
-          <div className="w-full sm:w-48">
-            <label htmlFor="hrCode" className="block text-sm font-medium text-slate-700 mb-1.5">
-              HR Code
-            </label>
-            <input
-              id="hrCode"
-              type="text"
-              value={hrCode}
-              onChange={(e) => setHrCode(e.target.value)}
-              required
-              placeholder="e.g. X003663"
-              pattern="[Xx]\d{6}"
-              title="HR code format: X followed by 6 digits"
-              className={inputClasses}
-            />
-          </div>
+          {needsHrCode && (
+            <div className="w-full sm:w-48">
+              <label htmlFor="hrCode" className="block text-sm font-medium text-slate-700 mb-1.5">
+                HR Code
+              </label>
+              <input
+                id="hrCode"
+                type="text"
+                value={hrCode}
+                onChange={(e) => setHrCode(e.target.value)}
+                required={needsHrCode}
+                placeholder="e.g. X003663"
+                pattern="[Xx]\d{6}"
+                title="HR code format: X followed by 6 digits"
+                className={inputClasses}
+              />
+            </div>
+          )}
           <div className="w-full sm:w-56">
             <label htmlFor="reportType" className="block text-sm font-medium text-slate-700 mb-1.5">
               Report Type
@@ -226,6 +241,9 @@ export default function ReportRunner({ allowedReports }: Props) {
       )}
       {reportData && activeReportType === 'working-days' && (
         <WorkingDaysReport data={reportData} />
+      )}
+      {reportData && activeReportType === 'working-days-by-client' && (
+        <WorkingDaysByClientReport data={reportData} />
       )}
     </>
   )

@@ -31,6 +31,7 @@ const APP_PERMISSIONS: Record<string, { key: string; label: string }[]> = {
   reports: [
     { key: 'deposit', label: 'Deposit Report' },
     { key: 'working-days', label: 'Deposit - Working Day Count' },
+    { key: 'working-days-by-client', label: 'Working Days by Client' },
   ],
 }
 
