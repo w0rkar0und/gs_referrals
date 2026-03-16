@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
   )
 
   const [{ data: profile }, { data: access }] = await Promise.all([
-    serviceClient.from('profiles').select('is_admin, display_id').eq('id', user.id).single(),
+    serviceClient.from('profiles').select('is_admin, display_id, email').eq('id', user.id).single(),
     serviceClient.from('user_apps').select('id, permissions').eq('user_id', user.id).eq('app_slug', 'reports').limit(1),
   ])
 
@@ -40,10 +40,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const { reportType, reportData, recipientEmail } = await request.json()
+  if (!profile?.email) {
+    return NextResponse.json({ error: 'No email present on user setup. Please contact system admin.' }, { status: 400 })
+  }
 
-  if (!reportType || !reportData || !recipientEmail) {
-    return NextResponse.json({ error: 'reportType, reportData, and recipientEmail are required.' }, { status: 400 })
+  const recipientEmail = profile.email
+
+  const { reportType, reportData } = await request.json()
+
+  if (!reportType || !reportData) {
+    return NextResponse.json({ error: 'reportType and reportData are required.' }, { status: 400 })
   }
 
   // Check report-level permission

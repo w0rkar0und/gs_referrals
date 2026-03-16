@@ -29,8 +29,6 @@ export default function ReportRunner({ allowedReports }: Props) {
   // Download/email state
   const [downloading, setDownloading] = useState(false)
   const [emailing, setEmailing] = useState(false)
-  const [emailAddress, setEmailAddress] = useState('')
-  const [showEmailInput, setShowEmailInput] = useState(false)
   const [emailSuccess, setEmailSuccess] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
 
@@ -42,7 +40,6 @@ export default function ReportRunner({ allowedReports }: Props) {
     setLoading(true)
     setError(null)
     setReportData(null)
-    setShowEmailInput(false)
     setEmailSuccess(null)
     setActionError(null)
 
@@ -106,7 +103,7 @@ export default function ReportRunner({ allowedReports }: Props) {
   }
 
   async function handleEmail() {
-    if (!reportData || !activeReportType || !emailAddress.trim()) return
+    if (!reportData || !activeReportType) return
     setEmailing(true)
     setActionError(null)
     setEmailSuccess(null)
@@ -118,7 +115,6 @@ export default function ReportRunner({ allowedReports }: Props) {
         body: JSON.stringify({
           reportType: activeReportType,
           reportData,
-          recipientEmail: emailAddress.trim(),
         }),
       })
 
@@ -130,9 +126,7 @@ export default function ReportRunner({ allowedReports }: Props) {
         return
       }
 
-      setEmailSuccess(`Report sent to ${emailAddress.trim()}.`)
-      setShowEmailInput(false)
-      setEmailAddress('')
+      setEmailSuccess('Report sent to your email.')
     } catch {
       setActionError('Failed to send email.')
     }
@@ -205,40 +199,16 @@ export default function ReportRunner({ allowedReports }: Props) {
               {downloading ? 'Downloading...' : 'Download Excel'}
             </button>
 
-            {showEmailInput ? (
-              <div className="flex items-center gap-2">
-                <input
-                  type="email"
-                  value={emailAddress}
-                  onChange={(e) => setEmailAddress(e.target.value)}
-                  placeholder="Recipient email"
-                  className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 focus:bg-white w-56"
-                />
-                <button
-                  onClick={handleEmail}
-                  disabled={emailing || !emailAddress.trim()}
-                  className="bg-blue-600 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
-                >
-                  {emailing ? 'Sending...' : 'Send'}
-                </button>
-                <button
-                  onClick={() => { setShowEmailInput(false); setEmailAddress('') }}
-                  className="text-sm text-slate-400 hover:text-slate-600 px-2 py-1"
-                >
-                  Cancel
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => setShowEmailInput(true)}
-                className="inline-flex items-center gap-2 bg-slate-100 text-slate-700 rounded-lg px-4 py-2 text-sm font-medium hover:bg-slate-200 active:scale-[0.98]"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
-                </svg>
-                Email Report
-              </button>
-            )}
+            <button
+              onClick={handleEmail}
+              disabled={emailing}
+              className="inline-flex items-center gap-2 bg-slate-100 text-slate-700 rounded-lg px-4 py-2 text-sm font-medium hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+              </svg>
+              {emailing ? 'Sending...' : 'Email to Me'}
+            </button>
 
             {actionError && (
               <span className="text-sm text-red-600">{actionError}</span>
