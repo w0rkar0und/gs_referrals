@@ -1,0 +1,13 @@
+{
+  "name": "gs-reports-proxy",
+  "version": "1.0.0",
+  "description": "Railway proxy for Greythorn SQL Server queries",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "mssql": "^11.0.1"
+  }
+}
