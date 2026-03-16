@@ -66,6 +66,7 @@ export interface UserApp {
   id: string
   user_id: string
   app_slug: string
+  permissions: Record<string, boolean> | null
   granted_at: string
   granted_by: string | null
 }

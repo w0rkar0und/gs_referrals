@@ -146,7 +146,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (action === 'update_apps') {
-    const { app_slugs } = params
+    const { app_slugs, app_permissions } = params
 
     if (!Array.isArray(app_slugs)) {
       return NextResponse.json({ error: 'app_slugs must be an array.' }, { status: 400 })
@@ -158,13 +158,15 @@ export async function POST(request: NextRequest) {
       .delete()
       .eq('user_id', user_id)
 
-    // Insert new app access
+    // Insert new app access with permissions
     if (app_slugs.length > 0) {
+      const permsMap = app_permissions as Record<string, Record<string, boolean>> | undefined
       const { error: insertError } = await serviceClient.from('user_apps').insert(
         app_slugs.map((slug: string) => ({
           user_id,
           app_slug: slug,
           granted_by: user.id,
+          permissions: permsMap?.[slug] ?? null,
         }))
       )
 
@@ -173,7 +175,18 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ ok: true, app_slugs })
+    // Fetch back the saved access for the response
+    const { data: savedAccess } = await serviceClient
+      .from('user_apps')
+      .select('app_slug, permissions')
+      .eq('user_id', user_id)
+
+    const appAccess = (savedAccess ?? []).map((ua: { app_slug: string; permissions: Record<string, boolean> | null }) => ({
+      slug: ua.app_slug,
+      permissions: ua.permissions,
+    }))
+
+    return NextResponse.json({ ok: true, app_slugs, app_access: appAccess })
   }
 
   return NextResponse.json({ error: 'Unknown action.' }, { status: 400 })

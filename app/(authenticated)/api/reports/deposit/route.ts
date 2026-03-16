@@ -29,11 +29,17 @@ export async function POST(request: NextRequest) {
 
   const [{ data: profile }, { data: access }] = await Promise.all([
     serviceClient.from('profiles').select('is_admin').eq('id', user.id).single(),
-    serviceClient.from('user_apps').select('id').eq('user_id', user.id).eq('app_slug', 'reports').limit(1),
+    serviceClient.from('user_apps').select('id, permissions').eq('user_id', user.id).eq('app_slug', 'reports').limit(1),
   ])
 
-  if (!profile?.is_admin && (!access || access.length === 0)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!profile?.is_admin) {
+    if (!access || access.length === 0) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+    const perms = access[0].permissions as Record<string, boolean> | null
+    if (!perms?.deposit) {
+      return NextResponse.json({ error: 'You do not have access to the Deposit Report.' }, { status: 403 })
+    }
   }
 
   const { hrCode } = await request.json()

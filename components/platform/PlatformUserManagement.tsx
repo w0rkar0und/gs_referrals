@@ -4,8 +4,14 @@ import { useState } from 'react'
 import type { Profile } from '@/lib/types'
 import type { AppDefinition } from '@/lib/apps'
 
+interface AppAccess {
+  slug: string
+  permissions: Record<string, boolean> | null
+}
+
 interface UserWithApps extends Profile {
   app_slugs: string[]
+  app_access: AppAccess[]
 }
 
 interface Props {
@@ -18,6 +24,14 @@ function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('en-GB', {
     day: '2-digit', month: '2-digit', year: 'numeric',
   })
+}
+
+// Apps that have sub-level permissions
+const APP_PERMISSIONS: Record<string, { key: string; label: string }[]> = {
+  reports: [
+    { key: 'deposit', label: 'Deposit Report' },
+    { key: 'working-days', label: 'Working Day Count' },
+  ],
 }
 
 const inputClasses = "w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 focus:bg-white"
@@ -33,6 +47,7 @@ export default function PlatformUserManagement({ initialUsers, allApps, currentU
   const [isInternal, setIsInternal] = useState(true)
   const [newUserIsAdmin, setNewUserIsAdmin] = useState(false)
   const [newUserApps, setNewUserApps] = useState<string[]>(['referrals'])
+  const [newUserPerms, setNewUserPerms] = useState<Record<string, Record<string, boolean>>>({})
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
@@ -41,6 +56,7 @@ export default function PlatformUserManagement({ initialUsers, allApps, currentU
   const [loadingUserId, setLoadingUserId] = useState<string | null>(null)
   const [editingAppsUserId, setEditingAppsUserId] = useState<string | null>(null)
   const [editingAppSlugs, setEditingAppSlugs] = useState<string[]>([])
+  const [editingPerms, setEditingPerms] = useState<Record<string, Record<string, boolean>>>({})
   const [editingProfileUserId, setEditingProfileUserId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState({ display_id: '', full_name: '', email: '', is_internal: true })
   const [confirmDeleteUserId, setConfirmDeleteUserId] = useState<string | null>(null)
@@ -63,6 +79,7 @@ export default function PlatformUserManagement({ initialUsers, allApps, currentU
         is_internal: isInternal,
         is_admin: newUserIsAdmin,
         app_slugs: newUserApps,
+        app_permissions: newUserPerms,
       }),
     })
 
@@ -75,13 +92,14 @@ export default function PlatformUserManagement({ initialUsers, allApps, currentU
     }
 
     setSuccess(`User "${displayId.trim()}" created successfully.`)
-    setUsers((prev) => [{ ...data.profile, app_slugs: data.app_slugs }, ...prev])
+    setUsers((prev) => [{ ...data.profile, app_slugs: data.app_slugs, app_access: data.app_access ?? [] }, ...prev])
     setDisplayId('')
     setFullName('')
     setEmail('')
     setPassword('')
     setNewUserIsAdmin(false)
     setNewUserApps(['referrals'])
+    setNewUserPerms({})
     setCreating(false)
   }
 
@@ -159,9 +177,15 @@ export default function PlatformUserManagement({ initialUsers, allApps, currentU
     setLoadingUserId(null)
   }
 
-  function startEditApps(userId: string, currentSlugs: string[]) {
+  function startEditApps(userId: string, user: UserWithApps) {
     setEditingAppsUserId(userId)
-    setEditingAppSlugs([...currentSlugs])
+    setEditingAppSlugs([...user.app_slugs])
+    // Build permissions map from existing app_access
+    const perms: Record<string, Record<string, boolean>> = {}
+    for (const aa of user.app_access) {
+      if (aa.permissions) perms[aa.slug] = { ...aa.permissions }
+    }
+    setEditingPerms(perms)
   }
 
   async function saveApps(userId: string) {
@@ -169,11 +193,11 @@ export default function PlatformUserManagement({ initialUsers, allApps, currentU
     const res = await fetch('/api/platform/admin/update-user', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'update_apps', user_id: userId, app_slugs: editingAppSlugs }),
+      body: JSON.stringify({ action: 'update_apps', user_id: userId, app_slugs: editingAppSlugs, app_permissions: editingPerms }),
     })
     const data = await res.json()
     if (res.ok) {
-      setUsers((prev) => prev.map((u) => u.id === userId ? { ...u, app_slugs: data.app_slugs } : u))
+      setUsers((prev) => prev.map((u) => u.id === userId ? { ...u, app_slugs: data.app_slugs, app_access: data.app_access ?? u.app_access } : u))
     }
     setEditingAppsUserId(null)
     setLoadingUserId(null)
@@ -183,12 +207,44 @@ export default function PlatformUserManagement({ initialUsers, allApps, currentU
     setNewUserApps((prev) =>
       prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug]
     )
+    // Clear permissions when removing an app
+    if (newUserApps.includes(slug)) {
+      setNewUserPerms((prev) => {
+        const next = { ...prev }
+        delete next[slug]
+        return next
+      })
+    }
+  }
+
+  function toggleNewUserPerm(appSlug: string, permKey: string) {
+    setNewUserPerms((prev) => {
+      const appPerms = { ...(prev[appSlug] ?? {}) }
+      appPerms[permKey] = !appPerms[permKey]
+      return { ...prev, [appSlug]: appPerms }
+    })
   }
 
   function toggleEditingApp(slug: string) {
     setEditingAppSlugs((prev) =>
       prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug]
     )
+    // Clear permissions when removing an app
+    if (editingAppSlugs.includes(slug)) {
+      setEditingPerms((prev) => {
+        const next = { ...prev }
+        delete next[slug]
+        return next
+      })
+    }
+  }
+
+  function toggleEditingPerm(appSlug: string, permKey: string) {
+    setEditingPerms((prev) => {
+      const appPerms = { ...(prev[appSlug] ?? {}) }
+      appPerms[permKey] = !appPerms[permKey]
+      return { ...prev, [appSlug]: appPerms }
+    })
   }
 
   const filteredUsers = searchQuery
@@ -276,19 +332,36 @@ export default function PlatformUserManagement({ initialUsers, allApps, currentU
                 </label>
               </div>
             </div>
-            <div>
+            <div className="sm:col-span-2">
               <label className="block text-sm font-medium text-slate-700 mb-1.5">App Access</label>
-              <div className="flex items-center gap-4 pt-1.5">
+              <div className="flex flex-wrap items-start gap-x-6 gap-y-2 pt-1.5">
                 {allApps.map((app) => (
-                  <label key={app.slug} className="flex items-center gap-1.5 text-sm text-slate-700 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={newUserApps.includes(app.slug)}
-                      onChange={() => toggleNewUserApp(app.slug)}
-                      className="accent-blue-600 rounded"
-                    />
-                    {app.name}
-                  </label>
+                  <div key={app.slug}>
+                    <label className="flex items-center gap-1.5 text-sm text-slate-700 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={newUserApps.includes(app.slug)}
+                        onChange={() => toggleNewUserApp(app.slug)}
+                        className="accent-blue-600 rounded"
+                      />
+                      {app.name}
+                    </label>
+                    {APP_PERMISSIONS[app.slug] && newUserApps.includes(app.slug) && (
+                      <div className="ml-5 mt-1 flex flex-col gap-1">
+                        {APP_PERMISSIONS[app.slug].map((perm) => (
+                          <label key={perm.key} className="flex items-center gap-1.5 text-xs text-slate-500 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={newUserPerms[app.slug]?.[perm.key] ?? false}
+                              onChange={() => toggleNewUserPerm(app.slug, perm.key)}
+                              className="accent-blue-600 rounded"
+                            />
+                            {perm.label}
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
             </div>
@@ -438,31 +511,50 @@ export default function PlatformUserManagement({ initialUsers, allApps, currentU
                         </td>
                         <td className="py-3 pr-4">
                           {editingAppsUserId === u.id ? (
-                            <div className="flex items-center gap-3">
+                            <div className="flex flex-wrap items-start gap-3">
                               {allApps.map((app) => (
-                                <label key={app.slug} className="flex items-center gap-1 text-xs text-slate-700 cursor-pointer">
-                                  <input
-                                    type="checkbox"
-                                    checked={editingAppSlugs.includes(app.slug)}
-                                    onChange={() => toggleEditingApp(app.slug)}
-                                    className="accent-blue-600 rounded"
-                                  />
-                                  {app.name}
-                                </label>
+                                <div key={app.slug}>
+                                  <label className="flex items-center gap-1 text-xs text-slate-700 cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      checked={editingAppSlugs.includes(app.slug)}
+                                      onChange={() => toggleEditingApp(app.slug)}
+                                      className="accent-blue-600 rounded"
+                                    />
+                                    {app.name}
+                                  </label>
+                                  {APP_PERMISSIONS[app.slug] && editingAppSlugs.includes(app.slug) && (
+                                    <div className="ml-4 mt-1 flex flex-col gap-0.5">
+                                      {APP_PERMISSIONS[app.slug].map((perm) => (
+                                        <label key={perm.key} className="flex items-center gap-1 text-[11px] text-slate-500 cursor-pointer">
+                                          <input
+                                            type="checkbox"
+                                            checked={editingPerms[app.slug]?.[perm.key] ?? false}
+                                            onChange={() => toggleEditingPerm(app.slug, perm.key)}
+                                            className="accent-blue-600 rounded"
+                                          />
+                                          {perm.label}
+                                        </label>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
                               ))}
-                              <button
-                                onClick={() => saveApps(u.id)}
-                                disabled={loadingUserId === u.id}
-                                className="text-xs text-blue-600 hover:text-blue-800 font-medium"
-                              >
-                                Save
-                              </button>
-                              <button
-                                onClick={() => setEditingAppsUserId(null)}
-                                className="text-xs text-slate-400 hover:text-slate-600"
-                              >
-                                Cancel
-                              </button>
+                              <div className="flex items-center gap-2 pt-0.5">
+                                <button
+                                  onClick={() => saveApps(u.id)}
+                                  disabled={loadingUserId === u.id}
+                                  className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                                >
+                                  Save
+                                </button>
+                                <button
+                                  onClick={() => setEditingAppsUserId(null)}
+                                  className="text-xs text-slate-400 hover:text-slate-600"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
                             </div>
                           ) : (
                             <div className="flex items-center gap-1.5">
@@ -512,7 +604,7 @@ export default function PlatformUserManagement({ initialUsers, allApps, currentU
                               </button>
                               {editingAppsUserId !== u.id && (
                                 <button
-                                  onClick={() => startEditApps(u.id, u.app_slugs)}
+                                  onClick={() => startEditApps(u.id, u)}
                                   className="text-xs text-slate-500 hover:text-slate-700 hover:bg-slate-50 px-2 py-1 rounded-lg"
                                 >
                                   Apps

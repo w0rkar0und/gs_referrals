@@ -1,114 +1,53 @@
-'use client'
+import { redirect } from 'next/navigation'
+import { createClient, createServiceClient } from '@/lib/supabase-server'
+import ReportRunner from '@/components/reports/ReportRunner'
 
-import { useState } from 'react'
-import DepositReport from '@/components/reports/DepositReport'
-import WorkingDaysReport from '@/components/reports/WorkingDaysReport'
+const ALL_REPORT_TYPES = ['deposit', 'working-days'] as const
 
-type ReportType = 'deposit' | 'working-days'
+export default async function ReportsPage() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
 
-const inputClasses = "w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 focus:bg-white uppercase"
+  const serviceClient = createServiceClient()
 
-export default function ReportsPage() {
-  const [hrCode, setHrCode] = useState('')
-  const [reportType, setReportType] = useState<ReportType>('deposit')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [reportData, setReportData] = useState<any>(null)
-  const [activeReportType, setActiveReportType] = useState<ReportType | null>(null)
+  const [{ data: profile }, { data: access }] = await Promise.all([
+    serviceClient.from('profiles').select('is_admin').eq('id', user.id).single(),
+    serviceClient.from('user_apps').select('permissions').eq('user_id', user.id).eq('app_slug', 'reports').limit(1),
+  ])
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    const code = hrCode.trim().toUpperCase()
-    if (!code) return
+  const isAdmin = profile?.is_admin ?? false
 
-    setLoading(true)
-    setError(null)
-    setReportData(null)
+  // Admins get all report types; non-admins get only those in their permissions
+  let allowedReports: string[]
 
-    try {
-      const res = await fetch(`/api/reports/${reportType}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ hrCode: code }),
-      })
+  if (isAdmin) {
+    allowedReports = [...ALL_REPORT_TYPES]
+  } else {
+    const perms = access?.[0]?.permissions as Record<string, boolean> | null
+    allowedReports = ALL_REPORT_TYPES.filter((rt) => perms?.[rt] === true)
+  }
 
-      const data = await res.json()
-
-      if (!res.ok) {
-        setError(data.error || 'Failed to generate report.')
-        setLoading(false)
-        return
-      }
-
-      setReportData(data)
-      setActiveReportType(reportType)
-    } catch {
-      setError('Failed to connect to the report service.')
-    }
-
-    setLoading(false)
+  if (allowedReports.length === 0) {
+    return (
+      <div className="py-8">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <h1 className="text-xl font-semibold text-slate-900 mb-6">Reports</h1>
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+            <p className="text-slate-500 text-sm">
+              You do not have access to any report types. Please contact your administrator.
+            </p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
     <div className="py-8">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <h1 className="text-xl font-semibold text-slate-900 mb-6">Reports</h1>
-
-        {/* Report selector */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
-          <form onSubmit={handleSubmit} autoComplete="off" className="flex flex-col sm:flex-row items-end gap-4">
-            <div className="w-full sm:w-48">
-              <label htmlFor="hrCode" className="block text-sm font-medium text-slate-700 mb-1.5">
-                HR Code
-              </label>
-              <input
-                id="hrCode"
-                type="text"
-                value={hrCode}
-                onChange={(e) => setHrCode(e.target.value)}
-                required
-                placeholder="e.g. X003663"
-                pattern="[Xx]\d{6}"
-                title="HR code format: X followed by 6 digits"
-                className={inputClasses}
-              />
-            </div>
-            <div className="w-full sm:w-56">
-              <label htmlFor="reportType" className="block text-sm font-medium text-slate-700 mb-1.5">
-                Report Type
-              </label>
-              <select
-                id="reportType"
-                value={reportType}
-                onChange={(e) => setReportType(e.target.value as ReportType)}
-                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 focus:bg-white"
-              >
-                <option value="deposit">Deposit Report</option>
-                <option value="working-days">Working Day Count</option>
-              </select>
-            </div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="bg-blue-600 text-white rounded-lg px-6 py-2.5 text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] whitespace-nowrap"
-            >
-              {loading ? 'Generating...' : 'Run Report'}
-            </button>
-          </form>
-
-          {error && (
-            <div className="mt-4 rounded-lg bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-700">{error}</div>
-          )}
-        </div>
-
-        {/* Report output */}
-        {reportData && activeReportType === 'deposit' && (
-          <DepositReport data={reportData} />
-        )}
-        {reportData && activeReportType === 'working-days' && (
-          <WorkingDaysReport data={reportData} />
-        )}
+        <ReportRunner allowedReports={allowedReports as ('deposit' | 'working-days')[]} />
       </div>
     </div>
   )

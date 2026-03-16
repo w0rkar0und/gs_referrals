@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const { display_id, password, full_name, email: userEmail, is_internal, is_admin, app_slugs } = await request.json()
+  const { display_id, password, full_name, email: userEmail, is_internal, is_admin, app_slugs, app_permissions } = await request.json()
 
   if (!display_id || !password) {
     return NextResponse.json({ error: 'Display ID and password are required.' }, { status: 400 })
@@ -79,11 +79,13 @@ export async function POST(request: NextRequest) {
     ? app_slugs
     : ['referrals']
 
+  const permsMap = app_permissions as Record<string, Record<string, boolean>> | undefined
   await serviceClient.from('user_apps').insert(
     slugs.map((slug: string) => ({
       user_id: newUser.user.id,
       app_slug: slug,
       granted_by: user.id,
+      permissions: permsMap?.[slug] ?? null,
     }))
   )
 
@@ -97,12 +99,18 @@ export async function POST(request: NextRequest) {
   // Fetch app access
   const { data: newUserApps } = await serviceClient
     .from('user_apps')
-    .select('app_slug')
+    .select('app_slug, permissions')
     .eq('user_id', newUser.user.id)
+
+  const appAccess = (newUserApps ?? []).map((ua: { app_slug: string; permissions: Record<string, boolean> | null }) => ({
+    slug: ua.app_slug,
+    permissions: ua.permissions,
+  }))
 
   return NextResponse.json({
     ok: true,
     profile: newProfile,
-    app_slugs: (newUserApps ?? []).map((ua: { app_slug: string }) => ua.app_slug),
+    app_slugs: appAccess.map((a: { slug: string }) => a.slug),
+    app_access: appAccess,
   })
 }
