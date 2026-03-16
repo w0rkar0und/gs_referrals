@@ -26,9 +26,11 @@ export default function Navbar({ isAdmin, displayId }: NavbarProps) {
   const currentApp = getAppByPath(pathname)
   const appSlug = currentApp?.slug
 
-  // Get nav links for the current app
-  const links = appSlug && APP_NAV[appSlug]
-    ? APP_NAV[appSlug].filter((link) => !link.adminOnly || isAdmin)
+  // Get nav links — use platform links on /apps, otherwise app-specific links
+  const isOnPlatform = pathname === '/apps' || pathname.startsWith('/apps/')
+  const navKey = appSlug ?? (isOnPlatform ? '_platform' : null)
+  const links = navKey && APP_NAV[navKey]
+    ? APP_NAV[navKey].filter((link) => !link.adminOnly || isAdmin)
     : []
 
   return (
@@ -48,7 +50,7 @@ export default function Navbar({ isAdmin, displayId }: NavbarProps) {
           {links.length > 0 && (
             <div className="flex items-center gap-0.5">
               {links.map((link) => {
-                const active = pathname === link.href || (link.href !== `/${appSlug}/admin` && pathname.startsWith(link.href + '/'))
+                const active = pathname === link.href || pathname.startsWith(link.href + '/')
                 return (
                   <Link
                     key={link.href}
