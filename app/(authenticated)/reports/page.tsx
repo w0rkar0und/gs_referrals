@@ -57,7 +57,7 @@ export default function ReportsPage() {
 
         {/* Report selector */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
-          <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row items-end gap-4">
+          <form onSubmit={handleSubmit} autoComplete="off" className="flex flex-col sm:flex-row items-end gap-4">
             <div className="w-full sm:w-48">
               <label htmlFor="hrCode" className="block text-sm font-medium text-slate-700 mb-1.5">
                 HR Code

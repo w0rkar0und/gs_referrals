@@ -56,7 +56,7 @@ export default function UserManagement({ initialProfiles }: { initialProfiles: P
       {/* Create user form */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
         <h2 className="text-base font-semibold text-slate-900 mb-4">Create New User</h2>
-        <form onSubmit={handleCreate} className="space-y-4">
+        <form onSubmit={handleCreate} autoComplete="off" className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label htmlFor="display_id" className="block text-sm font-medium text-slate-700 mb-1.5">

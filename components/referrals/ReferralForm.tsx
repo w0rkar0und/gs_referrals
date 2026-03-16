@@ -75,7 +75,7 @@ export default function ReferralForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form onSubmit={handleSubmit} autoComplete="off" className="space-y-5">
       <div>
         <label htmlFor="start_date" className="block text-sm font-medium text-slate-700 mb-1.5">
           Start Date

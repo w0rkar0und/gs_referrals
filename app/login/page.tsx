@@ -52,7 +52,7 @@ export default function LoginPage() {
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} autoComplete="off" className="space-y-5">
             <div>
               <label htmlFor="username" className="block text-sm font-medium text-slate-700 mb-1.5">
                 Username
