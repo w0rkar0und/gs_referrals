@@ -32,7 +32,7 @@ interface AdminReferral extends Referral {
 }
 
 async function updateReferral(id: string, updates: Record<string, unknown>) {
-  const res = await fetch('/api/admin/update-referral', {
+  const res = await fetch('/api/referrals/admin/update-referral', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ id, ...updates }),

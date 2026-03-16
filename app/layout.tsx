@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Greythorn Referrals",
-  description: "Greythorn referral registration and verification system",
+  title: "GS Apps",
+  description: "Greythorn Services application platform",
 };
 
 export default function RootLayout({

@@ -71,6 +71,7 @@ export default function ReferralForm() {
     }
 
     router.push('/referrals?submitted=1')
+
   }
 
   return (

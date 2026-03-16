@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase-server'
-import ReferralTable from '@/components/ReferralTable'
+import ReferralTable from '@/components/referrals/ReferralTable'
 
 export default async function ReferralsPage({ searchParams }: { searchParams: Promise<{ submitted?: string }> }) {
   const supabase = await createClient()

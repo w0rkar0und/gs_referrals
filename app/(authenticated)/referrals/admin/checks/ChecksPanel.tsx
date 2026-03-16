@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import SortableHeader, { useSort } from '@/components/SortableHeader'
-import SearchInput from '@/components/SearchInput'
+import SortableHeader, { useSort } from '@/components/referrals/SortableHeader'
+import SearchInput from '@/components/referrals/SearchInput'
 
 interface Referral {
   recruited_hr_code: string

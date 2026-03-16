@@ -1,0 +1,15 @@
+export interface NavLink {
+  href: string
+  label: string
+  adminOnly: boolean
+}
+
+export const APP_NAV: Record<string, NavLink[]> = {
+  referrals: [
+    { href: '/referrals', label: 'My Referrals', adminOnly: false },
+    { href: '/referrals/submit', label: 'New Referral', adminOnly: false },
+    { href: '/referrals/admin', label: 'Dashboard', adminOnly: true },
+    { href: '/referrals/admin/checks', label: 'Run Checks', adminOnly: true },
+    { href: '/referrals/admin/users', label: 'Users', adminOnly: true },
+  ],
+}

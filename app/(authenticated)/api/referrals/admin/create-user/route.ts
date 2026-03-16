@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const { display_id, password, is_internal } = await request.json()
+  const { display_id, password, is_internal, app_slugs } = await request.json()
 
   if (!display_id || !password) {
     return NextResponse.json({ error: 'Display ID and password are required.' }, { status: 400 })
@@ -60,6 +60,19 @@ export async function POST(request: NextRequest) {
   if (createError) {
     return NextResponse.json({ error: createError.message }, { status: 400 })
   }
+
+  // Grant app access
+  const slugs: string[] = Array.isArray(app_slugs) && app_slugs.length > 0
+    ? app_slugs
+    : ['referrals']
+
+  await serviceClient.from('user_apps').insert(
+    slugs.map((slug: string) => ({
+      user_id: newUser.user.id,
+      app_slug: slug,
+      granted_by: user.id,
+    }))
+  )
 
   // Fetch the auto-created profile
   const { data: newProfile } = await serviceClient

@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient, createServiceClient } from '@/lib/supabase-server'
-import SyncStatusBanner from '@/components/SyncStatusBanner'
-import AdminTable from '@/components/AdminTable'
+import SyncStatusBanner from '@/components/referrals/SyncStatusBanner'
+import AdminTable from '@/components/referrals/AdminTable'
 
 export default async function AdminPage() {
   const supabase = await createClient()

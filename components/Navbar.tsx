@@ -3,6 +3,8 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
+import { APP_NAV } from '@/lib/app-nav'
+import { getAppByPath } from '@/lib/apps'
 
 interface NavbarProps {
   isAdmin: boolean
@@ -20,49 +22,49 @@ export default function Navbar({ isAdmin, displayId }: NavbarProps) {
     router.refresh()
   }
 
-  const links = [
-    { href: '/referrals', label: 'My Referrals' },
-    { href: '/submit', label: 'New Referral' },
-  ]
+  // Determine which app we're in based on the current path
+  const currentApp = getAppByPath(pathname)
+  const appSlug = currentApp?.slug
 
-  if (isAdmin) {
-    links.push(
-      { href: '/admin', label: 'Dashboard' },
-      { href: '/admin/checks', label: 'Run Checks' },
-      { href: '/admin/users', label: 'Users' },
-    )
-  }
+  // Get nav links for the current app
+  const links = appSlug && APP_NAV[appSlug]
+    ? APP_NAV[appSlug].filter((link) => !link.adminOnly || isAdmin)
+    : []
 
   return (
     <nav className="bg-white border-b border-slate-200/80 sticky top-0 z-50 backdrop-blur-sm bg-white/95">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between h-14">
         <div className="flex items-center gap-8">
-          <Link href="/referrals" className="flex items-center gap-2">
+          <Link href="/apps" className="flex items-center gap-2">
             <div className="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center">
               <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-1.997m0 0A8.961 8.961 0 0 1 12 15.75c-1.99 0-3.832.648-5.323 1.747" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25a2.25 2.25 0 0 1-2.25-2.25v-2.25Z" />
               </svg>
             </div>
-            <span className="font-semibold text-slate-900 text-sm hidden sm:block">Greythorn</span>
+            <span className="font-semibold text-slate-900 text-sm hidden sm:block">
+              {currentApp ? currentApp.name : 'GS Apps'}
+            </span>
           </Link>
-          <div className="flex items-center gap-0.5">
-            {links.map((link) => {
-              const active = pathname === link.href || (link.href !== '/admin' && pathname.startsWith(link.href + '/'))
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium ${
-                    active
-                      ? 'bg-slate-100 text-slate-900'
-                      : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
-                  }`}
-                >
-                  {link.label}
-                </Link>
-              )
-            })}
-          </div>
+          {links.length > 0 && (
+            <div className="flex items-center gap-0.5">
+              {links.map((link) => {
+                const active = pathname === link.href || (link.href !== `/${appSlug}/admin` && pathname.startsWith(link.href + '/'))
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium ${
+                      active
+                        ? 'bg-slate-100 text-slate-900'
+                        : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+                    }`}
+                  >
+                    {link.label}
+                  </Link>
+                )
+              })}
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-3">
           <div className="hidden sm:flex items-center gap-2 px-2.5 py-1 bg-slate-50 rounded-lg">

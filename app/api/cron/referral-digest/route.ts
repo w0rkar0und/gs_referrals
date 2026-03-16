@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
     '',
     '',
     `Generated: ${now}`,
-    'View all referrals: https://www.gsapps.co/admin',
+    'View all referrals: https://www.gsapps.co/referrals/admin',
   ]
 
   const resend = new Resend(process.env.RESEND_API_KEY)

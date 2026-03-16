@@ -1,7 +1,8 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { APPS } from '@/lib/apps'
 
-const PROTECTED_PATHS = ['/referrals', '/submit', '/admin']
+const PROTECTED_PATHS = ['/apps', ...APPS.map((app) => app.basePath)]
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -39,9 +40,39 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl)
   }
 
+  // Check per-app access (skip for /apps launcher page)
+  const matchedApp = APPS.find(
+    (app) => pathname === app.basePath || pathname.startsWith(app.basePath + '/')
+  )
+
+  if (matchedApp) {
+    // Check if user is admin (bypasses app-level access check)
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('is_admin')
+      .eq('id', user.id)
+      .single()
+
+    if (!profile?.is_admin) {
+      // Check user_apps for this specific app
+      const { data: access } = await supabase
+        .from('user_apps')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('app_slug', matchedApp.slug)
+        .limit(1)
+
+      if (!access || access.length === 0) {
+        // No access — redirect to apps page
+        const appsUrl = new URL('/apps', request.url)
+        return NextResponse.redirect(appsUrl)
+      }
+    }
+  }
+
   return response
 }
 
 export const config = {
-  matcher: ['/referrals/:path*', '/submit/:path*', '/admin/:path*'],
+  matcher: ['/apps/:path*', '/referrals/:path*'],
 }

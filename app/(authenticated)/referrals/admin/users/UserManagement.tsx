@@ -26,7 +26,7 @@ export default function UserManagement({ initialProfiles }: { initialProfiles: P
     setError(null)
     setSuccess(null)
 
-    const res = await fetch('/api/admin/create-user', {
+    const res = await fetch('/api/referrals/admin/create-user', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

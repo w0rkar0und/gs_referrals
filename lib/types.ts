@@ -58,3 +58,11 @@ export interface SyncLogEntry {
   error_message: string | null
   triggered_by: 'scheduled' | 'manual'
 }
+
+export interface UserApp {
+  id: string
+  user_id: string
+  app_slug: string
+  granted_at: string
+  granted_by: string | null
+}
