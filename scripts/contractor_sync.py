@@ -23,6 +23,17 @@ GT_DB_USER = os.environ["GT_DB_USER"]
 GT_DB_PASSWORD = os.environ["GT_DB_PASSWORD"]
 GT_DB_PORT = os.environ.get("GT_DB_PORT", "1433")
 
+
+def get_odbc_driver() -> str:
+    """Pick the best available ODBC Driver for SQL Server."""
+    available = pyodbc.drivers()
+    for version in ("18", "17"):
+        name = f"ODBC Driver {version} for SQL Server"
+        if name in available:
+            return name
+    raise RuntimeError(f"No suitable ODBC driver found. Available: {available}")
+
+
 GREYTHORN_QUERY = """
 SELECT
     c.HrCode,
@@ -55,8 +66,9 @@ def main():
 
     try:
         # Connect to Greythorn SQL Server
+        driver = get_odbc_driver()
         conn_str = (
-            f"DRIVER={{ODBC Driver 18 for SQL Server}};"
+            f"DRIVER={{{driver}}};"
             f"SERVER={GT_DB_SERVER},{GT_DB_PORT};"
             f"DATABASE={GT_DB_NAME};"
             f"UID={GT_DB_USER};"
