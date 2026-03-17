@@ -105,7 +105,7 @@ export async function generateSettlementExcel(data: any): Promise<Buffer> {
     ws.mergeCells(nr.number, 1, nr.number, 6)
   } else {
     vehicles.forEach((v: { VRM: string; Make: string | null; Model: string | null; Supplier: string; IsOwnedByContractor: string | null; FromDate: string; ToDate: string | null }, i: number) => {
-      const isNonGreythorn = v.IsOwnedByContractor === '1'
+      const isNonGreythorn = v.IsOwnedByContractor !== '1'
       const style = isNonGreythorn ? greyItalicStyle : (i % 2 === 0 ? dataStyleEven : dataStyleOdd)
       const r = ws.addRow([v.VRM, v.Make ?? '—', v.Model ?? '—', v.Supplier, v.FromDate, v.ToDate ?? 'Current'])
       r.eachCell((c) => { c.style = style })
