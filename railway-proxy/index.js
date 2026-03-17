@@ -399,6 +399,160 @@ app.post('/report/working-days-by-client', async (req, res) => {
   }
 });
 
+// ── DA Relations Settlement Data ──
+app.post('/report/settlement', async (req, res) => {
+  const { hrCode } = req.body;
+  if (!hrCode) return res.status(400).json({ error: 'hrCode is required' });
+
+  try {
+    const p = await getPool();
+
+    // Contractor lookup
+    const contractorResult = await p.request()
+      .input('HrCode', sql.VarChar, hrCode)
+      .query(`
+        SELECT c.ContractorId, c.HrCode,
+               up.FirstName, up.LastName, up.Email, up.PhoneNumber
+        FROM Contractor c
+        JOIN [User] u ON u.UserId = c.UserId
+        JOIN UserProfile up ON up.UserId = u.UserId
+        WHERE c.HrCode = @HrCode
+      `);
+
+    const contractor = contractorResult.recordset[0] || null;
+    if (!contractor) {
+      return res.json({ contractor: null, deposit: null, transactions: [], charges: [], remittances: [] });
+    }
+
+    // Part 1A: Resolve last deposit ID (no JOINs, no bit/numeric columns)
+    const depositIdResult = await p.request()
+      .input('HrCode', sql.VarChar, hrCode)
+      .query(`
+        SELECT TOP 1 ContractorVehicleDepositId
+        FROM ContractorVehicleDeposit
+        WHERE ContractorId = (
+            SELECT ContractorId FROM Contractor WHERE HrCode = @HrCode
+        )
+        ORDER BY ContractorVehicleDepositId DESC
+      `);
+
+    let deposit = null;
+    let transactions = [];
+    const lastDepositId = depositIdResult.recordset[0]?.ContractorVehicleDepositId ?? null;
+
+    if (lastDepositId) {
+      // Part 1B: Full deposit details (by primary key)
+      const depositResult = await p.request()
+        .input('LastDepositId', sql.Int, lastDepositId)
+        .query(`
+          SELECT
+              d.ContractorVehicleDepositId,
+              CAST(d.DepositAmount AS FLOAT)             AS DepositAmount,
+              d.DepositWeeks,
+              CONVERT(VARCHAR, d.IsDeleted)              AS IsCancelled,
+              CONVERT(VARCHAR, d.CreatedAt, 103)         AS CreatedDate,
+              CONVERT(VARCHAR, d.UpdatedAt, 103)         AS UpdatedDate,
+              CONVERT(VARCHAR, d.DeletedAt, 103)         AS DeletedDate,
+              cu.FirstName + ' ' + cu.LastName           AS CreatedBy,
+              uu.FirstName + ' ' + uu.LastName           AS UpdatedBy,
+              du.FirstName + ' ' + du.LastName           AS DeletedBy
+          FROM ContractorVehicleDeposit d
+          LEFT JOIN [User] cbu ON cbu.UserId = d.CreatedBy
+          LEFT JOIN UserProfile cu  ON cu.UserId  = cbu.UserId
+          LEFT JOIN [User] ubu ON ubu.UserId = d.UpdatedBy
+          LEFT JOIN UserProfile uu  ON uu.UserId  = ubu.UserId
+          LEFT JOIN [User] dbu ON dbu.UserId = d.DeletedBy
+          LEFT JOIN UserProfile du  ON du.UserId  = dbu.UserId
+          WHERE d.ContractorVehicleDepositId = @LastDepositId
+        `);
+      deposit = depositResult.recordset[0] || null;
+
+      // Part 2: Deposit transactions (active only, on last deposit)
+      const txResult = await p.request()
+        .input('LastDepositId', sql.Int, lastDepositId)
+        .query(`
+          SELECT
+              t.ContractorVehicleDepositTransactionId,
+              CAST(t.Amount AS FLOAT)                    AS Amount,
+              CONVERT(VARCHAR, t.CreatedAt, 103)         AS Date,
+              cu.FirstName + ' ' + cu.LastName           AS CreatedBy
+          FROM ContractorVehicleDepositTransaction t
+          LEFT JOIN [User] cbu ON cbu.UserId = t.CreatedBy
+          LEFT JOIN UserProfile cu  ON cu.UserId  = cbu.UserId
+          WHERE t.ContractorVehicleDepositId = @LastDepositId
+            AND t.IsDeleted = 0
+          ORDER BY t.CreatedAt
+        `);
+      transactions = txResult.recordset;
+    }
+
+    // Part 3: Vehicle charges (independent of deposit)
+    const chargesResult = await p.request()
+      .input('HrCode', sql.VarChar, hrCode)
+      .query(`
+        SELECT
+            CONVERT(VARCHAR(20), v.RegistrationNumber)       AS VRM,
+            CONVERT(VARCHAR(30), vcr.VehicleChargeReasonName) AS Reason,
+            CONVERT(VARCHAR(50), vc.Reference)               AS Reference,
+            CONVERT(VARCHAR, vc.IssueDate, 103)              AS IssueDate,
+            CAST(vc.Amount AS FLOAT)                         AS Charged,
+            ISNULL(p.TotalPaid, 0)                           AS Paid,
+            ROUND(
+                CAST(vc.Amount AS FLOAT) - ISNULL(p.TotalPaid, 0),
+            2)                                               AS Outstanding
+        FROM VehicleCharge vc
+        JOIN Vehicle v           ON v.VehicleId             = vc.VehicleId
+        JOIN VehicleChargeReason vcr ON vcr.VehicleChargeReasonId = vc.VehicleChargeReasonId
+        JOIN ContractorVehicle cv
+            ON  cv.VehicleId     = vc.VehicleId
+            AND cv.ContractorId  = (SELECT ContractorId FROM Contractor WHERE HrCode = @HrCode)
+            AND vc.IssueDate    >= CAST(cv.FromDate AS DATE)
+            AND vc.IssueDate    <= ISNULL(CAST(cv.ToDate AS DATE), GETDATE())
+        LEFT JOIN (
+            SELECT VehicleChargeId, SUM(CAST(Amount AS FLOAT)) AS TotalPaid
+            FROM VehicleChargeTransaction
+            WHERE IsDeleted = 0
+            GROUP BY VehicleChargeId
+        ) p ON p.VehicleChargeId = vc.VehicleChargeId
+        WHERE vc.IsDeleted = 0
+          AND v.VehicleSupplierId = 2
+        ORDER BY vc.IssueDate
+      `);
+
+    // Part 4: Last two remittance notices (independent of deposit)
+    const remittancesResult = await p.request()
+      .input('HrCode', sql.VarChar, hrCode)
+      .query(`
+        SELECT TOP 2
+            rn.Year,
+            rn.Week,
+            CAST(rn.DebriefAmount       AS FLOAT) AS DebriefAmount,
+            CAST(rn.AdditionalPayAmount AS FLOAT) AS AdditionalPayAmount,
+            CAST(rn.DeductionsAmount    AS FLOAT) AS DeductionsAmount,
+            CAST(rn.DebriefAmount       AS FLOAT)
+                + CAST(rn.AdditionalPayAmount AS FLOAT)
+                - CAST(rn.DeductionsAmount    AS FLOAT) AS TotalPay
+        FROM RemittanceNotice rn
+        WHERE rn.ContractorId = (
+            SELECT ContractorId FROM Contractor WHERE HrCode = @HrCode
+        )
+          AND rn.IsDeleted = 0
+        ORDER BY rn.Year DESC, rn.Week DESC
+      `);
+
+    res.json({
+      contractor,
+      deposit,
+      transactions,
+      charges: chargesResult.recordset,
+      remittances: remittancesResult.recordset,
+    });
+  } catch (err) {
+    console.error('Settlement report error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Start server ──
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

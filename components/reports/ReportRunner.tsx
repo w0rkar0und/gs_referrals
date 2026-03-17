@@ -4,13 +4,15 @@ import { useState } from 'react'
 import DepositReport from '@/components/reports/DepositReport'
 import WorkingDaysReport from '@/components/reports/WorkingDaysReport'
 import WorkingDaysByClientReport from '@/components/reports/WorkingDaysByClientReport'
+import SettlementReport from '@/components/reports/SettlementReport'
 
-type ReportType = 'deposit' | 'working-days' | 'working-days-by-client'
+type ReportType = 'deposit' | 'working-days' | 'working-days-by-client' | 'settlement'
 
 const REPORT_LABELS: Record<ReportType, string> = {
   deposit: 'Deposit Report',
   'working-days': 'Contractor - Working Day Count',
   'working-days-by-client': 'Working Days by Client',
+  settlement: 'DA Relations Settlement Data',
 }
 
 const REPORTS_WITHOUT_HR_CODE: ReportType[] = ['working-days-by-client']
@@ -244,6 +246,9 @@ export default function ReportRunner({ allowedReports }: Props) {
       )}
       {reportData && activeReportType === 'working-days-by-client' && (
         <WorkingDaysByClientReport data={reportData} />
+      )}
+      {reportData && activeReportType === 'settlement' && (
+        <SettlementReport data={reportData} />
       )}
     </>
   )

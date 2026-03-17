@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient, createServiceClient } from '@/lib/supabase-server'
 import ReportRunner from '@/components/reports/ReportRunner'
 
-const ALL_REPORT_TYPES = ['deposit', 'working-days', 'working-days-by-client'] as const
+const ALL_REPORT_TYPES = ['deposit', 'working-days', 'working-days-by-client', 'settlement'] as const
 
 export default async function ReportsPage() {
   const supabase = await createClient()
@@ -47,7 +47,7 @@ export default async function ReportsPage() {
     <div className="py-8">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <h1 className="text-xl font-semibold text-slate-900 mb-6">Reports</h1>
-        <ReportRunner allowedReports={allowedReports as ('deposit' | 'working-days' | 'working-days-by-client')[]} />
+        <ReportRunner allowedReports={allowedReports as ('deposit' | 'working-days' | 'working-days-by-client' | 'settlement')[]} />
       </div>
     </div>
   )
