@@ -82,6 +82,7 @@ gs_apps/
 │   │           ├── deposit/route.ts             # Proxy → Railway deposit report
 │   │           ├── working-days/route.ts        # Proxy → Railway working days report
 │   │           ├── working-days-by-client/route.ts  # Proxy → Railway fleet-wide report
+│   │           ├── settlement/route.ts          # Proxy → Railway settlement report
 │   │           ├── download/route.ts            # ExcelJS generation → .xlsx download
 │   │           └── email/route.ts               # ExcelJS generation → Resend email
 │   └── api/
@@ -107,7 +108,8 @@ gs_apps/
 │       ├── ReportRunner.tsx             # Report selector, download/email actions
 │       ├── DepositReport.tsx            # Deposit report — 4-section table view
 │       ├── WorkingDaysReport.tsx        # Per-contractor working day count
-│       └── WorkingDaysByClientReport.tsx # Fleet-wide: filters, chart, grouped table
+│       ├── WorkingDaysByClientReport.tsx # Fleet-wide: filters, chart, grouped table
+│       └── SettlementReport.tsx         # DA Relations settlement — 5 collapsible sections
 ├── docs/
 │   ├── GREYTHORN_REPORTS_CONTEXT.md     # Full report specs (deposit + working days)
 │   └── WORKING_DAY_COUNT_BY_CLIENT.md   # Fleet-wide report spec + SQL
@@ -118,6 +120,7 @@ gs_apps/
 │   ├── excel-deposit.ts                 # Deposit report Excel generator
 │   ├── excel-working-days.ts            # Working day count Excel generator
 │   ├── excel-working-days-by-client.ts  # Fleet-wide report Excel generator
+│   ├── excel-settlement.ts             # Settlement report Excel generator
 │   ├── supabase.ts                      # Supabase client (browser)
 │   ├── supabase-server.ts               # Supabase client (server/RSC)
 │   └── types.ts                         # Shared TypeScript types
@@ -431,6 +434,7 @@ CREATE TRIGGER on_auth_user_created
   api/reports/deposit                → Deposit report proxy
   api/reports/working-days           → Working day count proxy
   api/reports/working-days-by-client → Fleet-wide report proxy
+  api/reports/settlement             → Settlement report proxy
   api/reports/download               → Excel download for any report type
   api/reports/email                  → Email report to user's own email
 /api/cron/sync-reminder        → Daily sync reminder email
@@ -504,6 +508,7 @@ A Node.js/Express service deployed on Railway with static outbound IPs, used to 
 | POST | `/report/deposit` | `{ hrCode }` | Deposit report — 4 section queries |
 | POST | `/report/working-days` | `{ hrCode }` | Per-contractor working day count |
 | POST | `/report/working-days-by-client` | `{}` | Fleet-wide weighted days by client/branch/contract type |
+| POST | `/report/settlement` | `{ hrCode }` | DA Relations settlement — deposit, vehicles, charges, remittances |
 
 ### Request flow
 ```
@@ -531,8 +536,9 @@ Reports follow a consistent pattern:
 | Slug | Name | HR Code Required | Description |
 |---|---|---|---|
 | `deposit` | Deposit Report | Yes | 4-section deposit summary per contractor |
-| `working-days` | Deposit - Working Day Count | Yes | Per-contractor weekly working day count |
+| `working-days` | Contractor - Working Day Count | Yes | Per-contractor weekly working day count |
 | `working-days-by-client` | Working Days by Client | No | Fleet-wide weighted days with visualisations |
+| `settlement` | DA Relations Settlement Data | Yes | 5-section settlement summary with collapsible sections |
 
 ### Access Control
 
@@ -548,7 +554,7 @@ Admins bypass both levels.
 3. **Vehicle Charges** — Greythorn vehicles only, with payment status and totals
 4. **Deposit Return Audit** — ContractorAdditionalPay where reason = 7
 
-### Deposit - Working Day Count
+### Contractor - Working Day Count
 - Per-contractor, per-week summary from approved debriefs + current-week rota projections
 - Two separate queries (never UNION ALL with FLOAT)
 - Half-day rule for nursery contracts applied in presentation layer
@@ -559,6 +565,18 @@ Admins bypass both levels.
 - Three weight tiers in SQL: OSM/Support = 0.0, Sameday_6* = 0.5, else = 1.0
 - Includes `BranchAlias` for display and filtering
 - **Visualisations:** filter bar (Client, Branch, Contract Type) + Recharts bar chart that drills down + grouped data table
+
+### DA Relations Settlement Data
+- Per-contractor settlement summary with 5 collapsible sections (chevron toggle, open by default)
+- **Section 1: Last Deposit Record** — latest `ContractorVehicleDeposit` with audit trail (created/updated/cancelled by)
+- **Section 2: Deposit Instalment Payments** — transactions on the last deposit, with totals summary. Collapsed header shows weeks paid + remaining
+- **Section 3: Vehicles Assigned** — all vehicles since the deposit creation date. Uses `VehicleOwnershipType.IsOwnedByContractor` to determine DA vs non-DA supplied. Non-DA supplied (contractor-owned, `IsOwnedByContractor !== '1'`) shown in italic grey. Collapsed header shows Greythorn vehicle count
+- **Section 4: Vehicle Charges** — Greythorn vehicles only, with payment status and totals. Collapsed header shows partial paid count, unpaid count, total outstanding
+- **Section 5: Recent Remittance Notices** — last 2 remittance notices
+- **Contractor header** shows account status (active/deactivated) from `ContractorAccountStatusHistory`
+- **Split query pattern**: Part 1A isolates deposit ID lookup (no JOINs) to avoid SQL Server bit+JOIN silent failure, Part 1B fetches full details by PK
+- **Vehicle ownership**: `VehicleOwnershipType` table joined via `Vehicle.VehicleOwnershipTypeId`. `IsOwnedByContractor = 1` = DA supplied (contractor's own vehicle). `IsOwnedByContractor != 1` = Greythorn/company vehicle (italic grey)
+- Response shape: `{ contractor, accountStatus, deposit, transactions, vehicles, charges, remittances }`
 
 ### Excel House Style
 
@@ -591,6 +609,9 @@ Admins bypass both levels.
 - **`VehicleSupplierId = 2`** = Greythorn
 - **`ContractorAdditionalPayReasonId = 7`** = Deposit Return
 - **BranchId from Debrief** — join `Branch` via `d.BranchId`, not `ContractType.BranchId`
+- **`VehicleOwnershipTypeId`** lives on `Vehicle` table, not `ContractorVehicle`
+- **DA Supplied vehicles** — `VehicleOwnershipType.IsOwnedByContractor = 1` means DA/contractor supplied their own vehicle; `!= 1` means Greythorn/company vehicle
+- **`ContractorVehicleDeposit` split query** — isolate ID lookup (Part 1A) from detail fetch (Part 1B) to avoid SQL Server bit+JOIN silent failure
 
 ---
 
@@ -634,6 +655,7 @@ Query version: `v1.0`. Half-day rule applies to: `NL 1%`, `NL 2%`, `NL 3%`, `Nur
 - **Edit users** — inline edit of display ID, full name, email, type
 - **Toggle admin** — make/remove platform admin (cannot modify own status)
 - **Deactivate/Reactivate** — sets `is_active` on profile and bans/unbans in Supabase Auth
+- **Reset password** — admin can set a new password for any user
 - **Delete users** — with confirmation prompt, cascades via FK
 - **Edit app access** — per-user app assignments with sub-permissions (e.g. report types)
 - **Search** — across display ID, full name, and email
@@ -661,20 +683,21 @@ Query version: `v1.0`. Half-day rule applies to: `NL 1%`, `NL 2%`, `NL 3%`, `Nur
 
 ---
 
-## Current State (as of 16 March 2026)
+## Current State (as of 17 March 2026)
 
 ### Multi-App Platform — Live, Pushed to GitHub
 
 - App launcher at `/apps` with card-based UI
 - `user_apps` table for per-app access control with `permissions` JSONB
 - Middleware enforces per-app authorisation
-- Navbar is multi-app aware with contextual navigation
-- Platform admin at `/apps/admin` for user management
+- Navbar is multi-app aware with contextual navigation — Greythorn logo PNG at 28x28px
+- Platform admin at `/apps/admin` for user management (including admin password reset)
 - Components namespaced under `components/referrals/`, `components/reports/`, `components/platform/`
 - All referral routes under `/referrals/` prefix
 - Old URLs redirected via `next.config.ts`
 - Repo renamed to `gs_apps` on GitHub, Vercel, and Supabase
 - Local directory renamed to `gs_apps`
+- Login page uses Greythorn strapline logo, tries both `@greythorn.internal` and `@greythorn.external` domains sequentially (no regex-based domain detection)
 
 ### Referrals App — Fully Built
 
@@ -682,16 +705,24 @@ All 11 original build phases complete. Referrals app is live at `/referrals/*`.
 
 ### Reports App — Fully Built
 
-All 8 build phases complete. Reports app is live at `/reports`:
+All 8 build phases complete plus additional reports. Reports app is live at `/reports`:
 - Phase 1: Railway proxy service (deployed, health check passing)
 - Phase 2: Deposit report endpoint
-- Phase 3: Working day count endpoint
+- Phase 3: Working day count endpoint (renamed to "Contractor - Working Day Count")
 - Phase 4: Auth gate + report-level permissions
 - Phase 5: Reports page with HR code input + report selector
 - Phase 6: In-browser formatted report preview
 - Phase 7: ExcelJS generation with house style + download
 - Phase 8: Resend email delivery with .xlsx attachment
 - Additional: Working Days by Client report with visualisations (filters + Recharts + grouped table)
+- Additional: DA Relations Settlement Data report — 5 collapsible sections with collapsed header summaries, account status, vehicles since deposit, vehicle charges, remittances
+
+### Build Configuration
+
+- `next.config.ts` includes `serverExternalPackages: ['exceljs']` (Turbopack mangles external module names)
+- `package.json` build script uses `next build --webpack` (Turbopack ignores `serverExternalPackages`)
+- Resend client instantiated inside handler functions (not at module scope) to avoid build-time env var errors
+- TypeScript pinned at 5.9.3 in package-lock.json
 
 ### Pending Migrations
 
@@ -712,7 +743,7 @@ Check which migrations have been applied to Supabase. The following exist in the
 
 1. **Active/inactive status** uses `ContractorAccountStatusHistory.Active` (not `CurrentRecruitmentStatusId`)
 2. **Status change date** from `ContractorAccountStatusHistory.CreatedAt`
-3. **ODBC Driver 18** on Mac
+3. **ODBC Driver auto-detection** — Python scripts detect ODBC Driver 18 or 17 automatically via `get_odbc_driver()`
 4. **Profile trigger** requires `SET search_path = public`
 5. **REF-001 duplicate check** runs during HR code validation, before REF-002
 6. **Greythorn DB is Azure SQL** — accessed via Railway proxy for static IP
@@ -723,6 +754,10 @@ Check which migrations have been applied to Supabase. The following exist in the
 11. **`is_active` null safety** — frontend uses `=== false` to treat null (pre-migration) as active
 12. **Email delivery** goes to user's own email from profiles; errors if no email set
 13. **`autoComplete="off"`** on all forms to prevent browser value retention
+14. **Login domain detection** — tries both internal and external domains sequentially; no restriction on username format for internal users
+15. **No temporary files** — all processing stays in memory across the entire chain (Vercel, Railway, Supabase); Excel buffers, JSON payloads all in-memory
+16. **`ContractorVehicleDeposit` split query** — Part 1A isolates ID, Part 1B fetches details, to avoid SQL Server bit+JOIN silent failure
+17. **Vehicle ownership** — `VehicleOwnershipType` joined via `Vehicle.VehicleOwnershipTypeId`; `IsOwnedByContractor = 1` = DA supplied (contractor's own); `!= 1` = Greythorn/company vehicle
 
 ---
 
@@ -731,6 +766,7 @@ Check which migrations have been applied to Supabase. The following exist in the
 - British English throughout all user-facing text
 - All dates displayed DD/MM/YYYY (UK locale)
 - Never expose `SUPABASE_SERVICE_ROLE_KEY` in browser-side code
+- **No temporary files** — never write temp files to any system in the chain; all processing must stay in memory
 - If a Greythorn query produces unexpected results, check the CRITICAL rules section first
 - When adding a new app, follow the "How to add a new app" checklist above
 - When adding a new report type, update: Railway proxy endpoint, Vercel API route, ReportRunner labels, reports page ALL_REPORT_TYPES, Excel generator, download/email routes, APP_PERMISSIONS in PlatformUserManagement
