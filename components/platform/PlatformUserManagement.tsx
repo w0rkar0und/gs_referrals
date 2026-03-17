@@ -61,6 +61,9 @@ export default function PlatformUserManagement({ initialUsers, allApps, currentU
   const [editingProfileUserId, setEditingProfileUserId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState({ display_id: '', full_name: '', email: '', is_internal: true })
   const [confirmDeleteUserId, setConfirmDeleteUserId] = useState<string | null>(null)
+  const [resetPasswordUserId, setResetPasswordUserId] = useState<string | null>(null)
+  const [resetPasswordValue, setResetPasswordValue] = useState('')
+  const [resetPasswordMsg, setResetPasswordMsg] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
 
   async function handleCreate(e: React.FormEvent) {
@@ -143,6 +146,23 @@ export default function PlatformUserManagement({ initialUsers, allApps, currentU
       setUsers((prev) => prev.filter((u) => u.id !== userId))
     }
     setConfirmDeleteUserId(null)
+    setLoadingUserId(null)
+  }
+
+  async function handleResetPassword(userId: string) {
+    if (!resetPasswordValue || resetPasswordValue.length < 6) return
+    setLoadingUserId(userId)
+    const res = await fetch('/api/platform/admin/update-user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'reset_password', user_id: userId, password: resetPasswordValue }),
+    })
+    if (res.ok) {
+      setResetPasswordMsg('Password reset successfully.')
+      setTimeout(() => setResetPasswordMsg(null), 3000)
+    }
+    setResetPasswordUserId(null)
+    setResetPasswordValue('')
     setLoadingUserId(null)
   }
 
@@ -403,13 +423,18 @@ export default function PlatformUserManagement({ initialUsers, allApps, currentU
           <h2 className="text-base font-semibold text-slate-900">
             All Users <span className="text-slate-400 font-normal">({users.length})</span>
           </h2>
-          <input
-            type="text"
-            placeholder="Search users..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 focus:bg-white w-56"
-          />
+          <div className="flex items-center gap-3">
+            {resetPasswordMsg && (
+              <span className="text-xs text-emerald-600 font-medium">{resetPasswordMsg}</span>
+            )}
+            <input
+              type="text"
+              placeholder="Search users..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 focus:bg-white w-56"
+            />
+          </div>
         </div>
         {filteredUsers.length === 0 ? (
           <p className="text-slate-500 text-sm">No users found.</p>
@@ -595,6 +620,30 @@ export default function PlatformUserManagement({ initialUsers, allApps, currentU
                                 Cancel
                               </button>
                             </div>
+                          ) : resetPasswordUserId === u.id ? (
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={resetPasswordValue}
+                                onChange={(e) => setResetPasswordValue(e.target.value)}
+                                placeholder="New password"
+                                minLength={6}
+                                className="rounded border border-slate-200 px-2 py-1 text-xs w-28"
+                              />
+                              <button
+                                onClick={() => handleResetPassword(u.id)}
+                                disabled={loadingUserId === u.id || resetPasswordValue.length < 6}
+                                className="text-xs font-medium text-blue-600 hover:text-blue-800 disabled:opacity-50"
+                              >
+                                {loadingUserId === u.id ? '...' : 'Set'}
+                              </button>
+                              <button
+                                onClick={() => { setResetPasswordUserId(null); setResetPasswordValue('') }}
+                                className="text-xs text-slate-400 hover:text-slate-600"
+                              >
+                                Cancel
+                              </button>
+                            </div>
                           ) : (
                             <div className="flex items-center gap-1">
                               <button
@@ -602,6 +651,12 @@ export default function PlatformUserManagement({ initialUsers, allApps, currentU
                                 className="text-xs text-slate-500 hover:text-slate-700 hover:bg-slate-50 px-2 py-1 rounded-lg"
                               >
                                 Edit
+                              </button>
+                              <button
+                                onClick={() => setResetPasswordUserId(u.id)}
+                                className="text-xs text-slate-500 hover:text-slate-700 hover:bg-slate-50 px-2 py-1 rounded-lg"
+                              >
+                                Password
                               </button>
                               {editingAppsUserId !== u.id && (
                                 <button

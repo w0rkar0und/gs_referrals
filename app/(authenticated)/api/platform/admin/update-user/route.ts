@@ -145,6 +145,24 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, is_admin: !target.is_admin })
   }
 
+  if (action === 'reset_password') {
+    const { password: newPassword } = params
+
+    if (!newPassword || newPassword.length < 6) {
+      return NextResponse.json({ error: 'Password must be at least 6 characters.' }, { status: 400 })
+    }
+
+    const { error: resetError } = await serviceClient.auth.admin.updateUserById(user_id, {
+      password: newPassword,
+    })
+
+    if (resetError) {
+      return NextResponse.json({ error: resetError.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ ok: true })
+  }
+
   if (action === 'update_apps') {
     const { app_slugs, app_permissions } = params
 

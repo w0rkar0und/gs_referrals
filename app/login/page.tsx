@@ -5,12 +5,6 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 
-function buildEmail(username: string): string {
-  const isInternal = /^[Xx]\d{6}$/.test(username.trim())
-  const domain = isInternal ? 'greythorn.internal' : 'greythorn.external'
-  return `${username.trim().toLowerCase()}@${domain}`
-}
-
 export default function LoginPage() {
   const router = useRouter()
   const supabase = createClient()
@@ -24,19 +18,33 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
 
-    const { error: authError } = await supabase.auth.signInWithPassword({
-      email: buildEmail(username),
+    const trimmed = username.trim().toLowerCase()
+
+    // Try both domains — we cannot infer internal/external from username format
+    const { error: internalError } = await supabase.auth.signInWithPassword({
+      email: `${trimmed}@greythorn.internal`,
       password,
     })
 
-    if (authError) {
-      setError('Invalid username or password. Please try again.')
-      setLoading(false)
+    if (!internalError) {
+      router.push('/apps')
+      router.refresh()
       return
     }
 
-    router.push('/apps')
-    router.refresh()
+    const { error: externalError } = await supabase.auth.signInWithPassword({
+      email: `${trimmed}@greythorn.external`,
+      password,
+    })
+
+    if (!externalError) {
+      router.push('/apps')
+      router.refresh()
+      return
+    }
+
+    setError('Invalid username or password. Please try again.')
+    setLoading(false)
   }
 
   return (
