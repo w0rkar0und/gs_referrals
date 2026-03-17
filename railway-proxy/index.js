@@ -421,8 +421,24 @@ app.post('/report/settlement', async (req, res) => {
 
     const contractor = contractorResult.recordset[0] || null;
     if (!contractor) {
-      return res.json({ contractor: null, deposit: null, transactions: [], charges: [], remittances: [] });
+      return res.json({ contractor: null, accountStatus: null, deposit: null, transactions: [], charges: [], remittances: [] });
     }
+
+    // Account status: current status and last change details
+    const statusResult = await p.request()
+      .input('HrCode', sql.VarChar, hrCode)
+      .query(`
+        SELECT TOP 1
+            h.Active,
+            CONVERT(VARCHAR, h.CreatedAt, 103) AS StatusDate,
+            up.FirstName + ' ' + up.LastName AS ChangedBy
+        FROM ContractorAccountStatusHistory h
+        LEFT JOIN [User] u ON u.UserId = h.CreatedBy
+        LEFT JOIN UserProfile up ON up.UserId = u.UserId
+        WHERE h.ContractorId = (SELECT ContractorId FROM Contractor WHERE HrCode = @HrCode)
+        ORDER BY h.CreatedAt DESC
+      `);
+    const accountStatus = statusResult.recordset[0] || null;
 
     // Part 1A: Resolve last deposit ID (no JOINs, no bit/numeric columns)
     const depositIdResult = await p.request()
@@ -542,6 +558,7 @@ app.post('/report/settlement', async (req, res) => {
 
     res.json({
       contractor,
+      accountStatus,
       deposit,
       transactions,
       charges: chargesResult.recordset,

@@ -48,8 +48,15 @@ interface Contractor {
   PhoneNumber: string | null
 }
 
+interface AccountStatus {
+  Active: boolean
+  StatusDate: string
+  ChangedBy: string | null
+}
+
 interface SettlementReportData {
   contractor: Contractor | null
+  accountStatus: AccountStatus | null
   deposit: Deposit | null
   transactions: Transaction[]
   charges: Charge[]
@@ -65,7 +72,7 @@ function currency(val: number): string {
 }
 
 export default function SettlementReport({ data }: { data: SettlementReportData }) {
-  const { contractor, deposit, transactions, charges, remittances } = data
+  const { contractor, accountStatus, deposit, transactions, charges, remittances } = data
 
   if (!contractor) {
     return (
@@ -90,6 +97,21 @@ export default function SettlementReport({ data }: { data: SettlementReportData 
           {contractor.HrCode} — {contractor.FirstName} {contractor.LastName}
           {contractor.Email && <span className="ml-3 text-blue-300">{contractor.Email}</span>}
         </p>
+        <div className="flex items-center gap-3 mt-2">
+          {accountStatus ? (
+            <>
+              <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${accountStatus.Active ? 'bg-emerald-500/20 text-emerald-200' : 'bg-red-500/20 text-red-200'}`}>
+                {accountStatus.Active ? 'Active' : 'Deactivated'}
+              </span>
+              <span className="text-blue-300 text-xs">
+                Status changed {accountStatus.StatusDate}
+                {accountStatus.ChangedBy && <> by {accountStatus.ChangedBy}</>}
+              </span>
+            </>
+          ) : (
+            <span className="inline-block rounded-full bg-emerald-500/20 text-emerald-200 px-2.5 py-0.5 text-xs font-medium">Active</span>
+          )}
+        </div>
       </div>
 
       {/* Section 1: Last Deposit Record */}

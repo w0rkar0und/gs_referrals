@@ -10,7 +10,7 @@ export async function generateSettlementExcel(data: any): Promise<Buffer> {
   const ws = wb.addWorksheet('Settlement Data', { views: [{ state: 'frozen', ySplit: 4 }] })
   ws.properties.showGridLines = false
 
-  const { contractor, deposit, transactions, charges, remittances } = data
+  const { contractor, accountStatus, deposit, transactions, charges, remittances } = data
   const name = contractor ? `${contractor.HrCode} — ${contractor.FirstName} ${contractor.LastName}` : 'Unknown'
 
   // Title
@@ -18,6 +18,14 @@ export async function generateSettlementExcel(data: any): Promise<Buffer> {
   titleRow.eachCell((c) => { c.style = titleStyle })
   ws.mergeCells(titleRow.number, 1, titleRow.number, 9)
   titleRow.height = 30
+
+  // Account status row
+  const statusText = accountStatus
+    ? `Account Status: ${accountStatus.Active ? 'Active' : 'Deactivated'} — Changed ${accountStatus.StatusDate}${accountStatus.ChangedBy ? ` by ${accountStatus.ChangedBy}` : ''}`
+    : 'Account Status: Active (no status history recorded)'
+  const statusRow = ws.addRow([statusText])
+  statusRow.eachCell((c) => { c.style = { font: { size: 10, italic: true } } })
+  ws.mergeCells(statusRow.number, 1, statusRow.number, 9)
 
   ws.addRow([])
 
