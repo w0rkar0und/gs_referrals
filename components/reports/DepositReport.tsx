@@ -1,11 +1,10 @@
 'use client'
 
-import React, { useState } from 'react'
+import { useState } from 'react'
 
 interface Transaction {
   ContractorVehicleDepositTransactionId: number
   Amount: number
-  IsDeleted: boolean
   Date: string
   CreatedBy: string | null
 }
@@ -14,14 +13,13 @@ interface Deposit {
   ContractorVehicleDepositId: number
   DepositAmount: number
   DepositWeeks: number
-  IsCancelled: boolean
+  IsCancelled: string
   CreatedDate: string
   CreatedBy: string | null
   UpdatedDate: string | null
   UpdatedBy: string | null
   CancelledDate: string | null
   CancelledBy: string | null
-  transactions: Transaction[]
 }
 
 interface Vehicle {
@@ -63,7 +61,8 @@ interface Contractor {
 
 interface DepositReportData {
   contractor: Contractor | null
-  deposits: Deposit[]
+  deposit: Deposit | null
+  transactions: Transaction[]
   vehicles: Vehicle[]
   charges: Charge[]
   depositReturns: DepositReturn[]
@@ -102,7 +101,7 @@ function CollapsibleSection({ title, collapsedSummary, defaultOpen = true, child
 }
 
 export default function DepositReport({ data }: { data: DepositReportData }) {
-  const { contractor, deposits, vehicles, charges, depositReturns } = data
+  const { contractor, deposit, transactions, vehicles, charges, depositReturns } = data
 
   if (!contractor) {
     return (
@@ -113,16 +112,13 @@ export default function DepositReport({ data }: { data: DepositReportData }) {
   }
 
   // Derived values for deposit section summary
-  const allTransactions = deposits.flatMap(d => d.transactions)
-  const activeTransactions = allTransactions.filter(t => !t.IsDeleted)
-  const totalPayments = activeTransactions.reduce((s, t) => s + t.Amount, 0)
-  const activeDeposits = deposits.filter(d => !d.IsCancelled)
-  const depositSummaryParts: string[] = []
-  if (deposits.length > 0) {
-    depositSummaryParts.push(`${deposits.length} deposit${deposits.length !== 1 ? 's' : ''}`)
-    if (activeTransactions.length > 0) depositSummaryParts.push(`${currency(totalPayments)} collected`)
-  }
-  const depositSummary = depositSummaryParts.length > 0 ? depositSummaryParts.join(' · ') : undefined
+  const totalCollected = transactions.reduce((s, t) => s + t.Amount, 0)
+  const weeksPaid = transactions.length
+  const weeksRemaining = deposit ? deposit.DepositWeeks - weeksPaid : 0
+  const amountRemaining = deposit ? deposit.DepositAmount - totalCollected : 0
+  const instalmentSummary = deposit && transactions.length > 0
+    ? `${weeksPaid} of ${deposit.DepositWeeks} weeks paid — ${currency(amountRemaining)} remaining (${weeksRemaining} weeks)`
+    : undefined
 
   // Derived values for vehicle section summary
   const greythornVehicleCount = vehicles.filter(v => v.VehicleSupplierId === 2).length
@@ -164,9 +160,9 @@ export default function DepositReport({ data }: { data: DepositReportData }) {
         </p>
       </div>
 
-      {/* Section 1: Deposit Details */}
-      <CollapsibleSection title="Deposit Details" collapsedSummary={depositSummary}>
-        {deposits.length === 0 ? (
+      {/* Section 1: Last Deposit Record */}
+      <CollapsibleSection title="Last Deposit Record">
+        {!deposit ? (
           <div className="bg-amber-50 px-4 py-3 text-sm text-amber-800 italic">No deposit records found.</div>
         ) : (
           <div className="overflow-x-auto">
@@ -185,58 +181,66 @@ export default function DepositReport({ data }: { data: DepositReportData }) {
                 </tr>
               </thead>
               <tbody>
-                {deposits.map((d, i) => (
-                  <React.Fragment key={d.ContractorVehicleDepositId}>
-                    <tr className={`border-b border-slate-100 ${i % 2 === 1 ? 'bg-[#DEEAF1]/30' : ''} ${d.IsCancelled ? 'opacity-60' : ''}`}>
-                      <td className={cellClass}>{currency(d.DepositAmount)}</td>
-                      <td className={cellClass}>{d.DepositWeeks}</td>
-                      <td className={cellClass}>
-                        {d.IsCancelled ? (
-                          <span className="inline-block rounded-full bg-red-50 text-red-600 px-2.5 py-0.5 text-xs font-medium">Cancelled</span>
-                        ) : (
-                          <span className="inline-block rounded-full bg-emerald-50 text-emerald-700 px-2.5 py-0.5 text-xs font-medium">Active</span>
-                        )}
-                      </td>
-                      <td className={cellClass}>{d.CreatedDate}</td>
-                      <td className={cellClass}>{d.CreatedBy ?? '—'}</td>
-                      <td className={cellClass}>{d.UpdatedDate ?? '—'}</td>
-                      <td className={cellClass}>{d.UpdatedBy ?? '—'}</td>
-                      <td className={cellClass}>{d.CancelledDate ?? '—'}</td>
-                      <td className={cellClass}>{d.CancelledBy ?? '—'}</td>
-                    </tr>
-                    {d.transactions.length > 0 && d.transactions.map((t) => (
-                      <tr key={t.ContractorVehicleDepositTransactionId} className="bg-slate-50/50 border-b border-slate-100">
-                        <td className={`${cellClass} pl-8 text-slate-500`}>{currency(t.Amount)}</td>
-                        <td className={cellClass} />
-                        <td className={cellClass}>
-                          {t.IsDeleted ? (
-                            <span className="text-xs text-red-400 italic">Deleted</span>
-                          ) : (
-                            <span className="text-xs text-slate-400">Transaction</span>
-                          )}
-                        </td>
-                        <td className={`${cellClass} text-slate-500`}>{t.Date}</td>
-                        <td className={`${cellClass} text-slate-500`}>{t.CreatedBy ?? '—'}</td>
-                        <td colSpan={4} />
-                      </tr>
-                    ))}
-                  </React.Fragment>
-                ))}
-                {activeTransactions.length > 0 && (
-                  <tr className="bg-[#E2EFDA]/50">
-                    <td className={`${cellClass} font-semibold`}>{currency(totalPayments)}</td>
-                    <td colSpan={8} className={`${cellClass} font-semibold`}>
-                      Total deposit payments collected ({activeTransactions.length} transaction{activeTransactions.length !== 1 ? 's' : ''})
-                    </td>
-                  </tr>
-                )}
+                <tr className="border-b border-slate-100">
+                  <td className={cellClass}>{currency(deposit.DepositAmount)}</td>
+                  <td className={cellClass}>{deposit.DepositWeeks}</td>
+                  <td className={cellClass}>
+                    {deposit.IsCancelled === '1' ? (
+                      <span className="inline-block rounded-full bg-red-50 text-red-600 px-2.5 py-0.5 text-xs font-medium">Cancelled</span>
+                    ) : (
+                      <span className="inline-block rounded-full bg-emerald-50 text-emerald-700 px-2.5 py-0.5 text-xs font-medium">Active</span>
+                    )}
+                  </td>
+                  <td className={cellClass}>{deposit.CreatedDate}</td>
+                  <td className={cellClass}>{deposit.CreatedBy ?? '—'}</td>
+                  <td className={cellClass}>{deposit.UpdatedDate ?? '—'}</td>
+                  <td className={cellClass}>{deposit.UpdatedBy ?? '—'}</td>
+                  <td className={cellClass}>{deposit.CancelledDate ?? '—'}</td>
+                  <td className={cellClass}>{deposit.CancelledBy ?? '—'}</td>
+                </tr>
               </tbody>
             </table>
           </div>
         )}
       </CollapsibleSection>
 
-      {/* Section 2: Vehicle Usage History */}
+      {/* Section 2: Deposit Instalment Payments */}
+      <CollapsibleSection title="Deposit Instalment Payments" collapsedSummary={instalmentSummary}>
+        {!deposit ? (
+          <div className="bg-amber-50 px-4 py-3 text-sm text-amber-800 italic">No deposit record found for this contractor.</div>
+        ) : transactions.length === 0 ? (
+          <div className="bg-amber-50 px-4 py-3 text-sm text-amber-800 italic">No instalment payments recorded against this deposit.</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-50">
+                  <th className={`${tableHeader} py-2.5 px-4 text-right`}>Amount</th>
+                  <th className={`${tableHeader} py-2.5 px-4 text-left`}>Date</th>
+                  <th className={`${tableHeader} py-2.5 px-4 text-left`}>Created By</th>
+                </tr>
+              </thead>
+              <tbody>
+                {transactions.map((t, i) => (
+                  <tr key={t.ContractorVehicleDepositTransactionId} className={`border-b border-slate-100 ${i % 2 === 1 ? 'bg-[#DEEAF1]/30' : ''}`}>
+                    <td className={`${cellClass} text-right`}>{currency(t.Amount)}</td>
+                    <td className={cellClass}>{t.Date}</td>
+                    <td className={cellClass}>{t.CreatedBy ?? '—'}</td>
+                  </tr>
+                ))}
+                <tr className="bg-[#E2EFDA]/50">
+                  <td className={`${cellClass} text-right font-semibold`}>{currency(totalCollected)}</td>
+                  <td colSpan={2} className={`${cellClass} font-semibold`}>
+                    {weeksPaid} of {deposit.DepositWeeks} weeks paid — {currency(amountRemaining)} remaining ({weeksRemaining} weeks)
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
+      </CollapsibleSection>
+
+      {/* Section 3: Vehicle Usage History */}
       <CollapsibleSection title="Vehicle Usage History" collapsedSummary={vehicleSummary}>
         {vehicles.length === 0 ? (
           <div className="bg-amber-50 px-4 py-3 text-sm text-amber-800 italic">No vehicle records found.</div>
@@ -273,7 +277,7 @@ export default function DepositReport({ data }: { data: DepositReportData }) {
         )}
       </CollapsibleSection>
 
-      {/* Section 3: Vehicle Charges */}
+      {/* Section 4: Vehicle Charges */}
       <CollapsibleSection title="Vehicle Charges" collapsedSummary={chargeSummary}>
         {charges.length === 0 ? (
           <div className="bg-amber-50 px-4 py-3 text-sm text-amber-800 italic">No vehicle charges found.</div>
@@ -317,7 +321,7 @@ export default function DepositReport({ data }: { data: DepositReportData }) {
         )}
       </CollapsibleSection>
 
-      {/* Section 4: Deposit Return Audit */}
+      {/* Section 5: Deposit Return Audit */}
       <CollapsibleSection title="Deposit Return Audit" collapsedSummary={returnSummary}>
         {depositReturns.length === 0 ? (
           <div className="bg-amber-50 px-4 py-3 text-sm text-amber-800 italic">No Deposit Return record found.</div>

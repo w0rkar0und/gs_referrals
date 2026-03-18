@@ -11,7 +11,7 @@ export async function generateDepositExcel(data: any): Promise<Buffer> {
   const ws = wb.addWorksheet('Deposit Report', { views: [{ state: 'frozen', ySplit: 4 }] })
   ws.properties.showGridLines = false
 
-  const { contractor, deposits, vehicles, charges, depositReturns } = data
+  const { contractor, deposit, transactions, vehicles, charges, depositReturns } = data
   const name = contractor ? `${contractor.HrCode} — ${contractor.FirstName} ${contractor.LastName}` : 'Unknown'
 
   // Title
@@ -22,8 +22,8 @@ export async function generateDepositExcel(data: any): Promise<Buffer> {
 
   ws.addRow([])
 
-  // ── Section 1: Deposit Details ──
-  const s1 = ws.addRow(['Deposit Details'])
+  // ── Section 1: Last Deposit Record ──
+  const s1 = ws.addRow(['Last Deposit Record'])
   s1.eachCell((c) => { c.style = sectionStyle })
   ws.mergeCells(s1.number, 1, s1.number, 9)
 
@@ -31,41 +31,68 @@ export async function generateDepositExcel(data: any): Promise<Buffer> {
   const h1 = ws.addRow(headers1)
   h1.eachCell((c) => { c.style = headerStyle })
 
-  if (deposits.length === 0) {
+  if (!deposit) {
     const nr = ws.addRow(['No deposit records found.'])
     nr.eachCell((c) => { c.style = nilStyle })
     ws.mergeCells(nr.number, 1, nr.number, 9)
   } else {
-    let idx = 0
-    for (const d of deposits) {
-      const style = d.IsCancelled ? cancelledStyle : idx % 2 === 0 ? dataStyleEven : dataStyleOdd
-      const r = ws.addRow([
-        d.DepositAmount, d.DepositWeeks,
-        d.IsCancelled ? 'Cancelled' : 'Active',
-        d.CreatedDate, d.CreatedBy ?? '—',
-        d.UpdatedDate ?? '—', d.UpdatedBy ?? '—',
-        d.CancelledDate ?? '—', d.CancelledBy ?? '—',
-      ])
-      r.eachCell((c) => { c.style = style })
-      r.getCell(1).numFmt = '£#,##0.00'
-
-      for (const t of d.transactions ?? []) {
-        const tr = ws.addRow([`  ${formatCurrency(t.Amount)}`, '', t.IsDeleted ? 'Deleted' : 'Transaction', t.Date, t.CreatedBy ?? '—'])
-        tr.eachCell((c) => { c.style = transactionStyle })
-      }
-      idx++
-    }
+    const isCancelled = deposit.IsCancelled === '1' || deposit.IsCancelled === true
+    const style = isCancelled ? cancelledStyle : dataStyleEven
+    const r = ws.addRow([
+      deposit.DepositAmount, deposit.DepositWeeks,
+      isCancelled ? 'Cancelled' : 'Active',
+      deposit.CreatedDate, deposit.CreatedBy ?? '—',
+      deposit.UpdatedDate ?? '—', deposit.UpdatedBy ?? '—',
+      deposit.CancelledDate ?? '—', deposit.CancelledBy ?? '—',
+    ])
+    r.eachCell((c) => { c.style = style })
+    r.getCell(1).numFmt = '£#,##0.00'
   }
 
   ws.addRow([])
 
-  // ── Section 2: Vehicle Usage History ──
-  const s2 = ws.addRow(['Vehicle Usage History'])
+  // ── Section 2: Deposit Instalment Payments ──
+  const s2 = ws.addRow(['Deposit Instalment Payments'])
   s2.eachCell((c) => { c.style = sectionStyle })
-  ws.mergeCells(s2.number, 1, s2.number, 6)
+  ws.mergeCells(s2.number, 1, s2.number, 3)
 
-  const h2 = ws.addRow(['VRM', 'Make', 'Model', 'Supplier', 'From', 'To'])
+  const h2 = ws.addRow(['Amount', 'Date', 'Created By'])
   h2.eachCell((c) => { c.style = headerStyle })
+
+  if (!deposit) {
+    const nr = ws.addRow(['No deposit record found for this contractor.'])
+    nr.eachCell((c) => { c.style = nilStyle })
+    ws.mergeCells(nr.number, 1, nr.number, 3)
+  } else if (!transactions || transactions.length === 0) {
+    const nr = ws.addRow(['No instalment payments recorded against this deposit.'])
+    nr.eachCell((c) => { c.style = nilStyle })
+    ws.mergeCells(nr.number, 1, nr.number, 3)
+  } else {
+    transactions.forEach((t: { Amount: number; Date: string; CreatedBy: string | null }, i: number) => {
+      const style = i % 2 === 0 ? dataStyleEven : dataStyleOdd
+      const r = ws.addRow([t.Amount, t.Date, t.CreatedBy ?? '—'])
+      r.eachCell((c) => { c.style = style })
+      r.getCell(1).numFmt = '£#,##0.00'
+    })
+
+    const totalCollected = transactions.reduce((s: number, t: { Amount: number }) => s + t.Amount, 0)
+    const weeksPaid = transactions.length
+    const weeksRemaining = deposit.DepositWeeks - weeksPaid
+    const amountRemaining = deposit.DepositAmount - totalCollected
+    const tr = ws.addRow([totalCollected, `${weeksPaid} of ${deposit.DepositWeeks} weeks paid — ${formatCurrency(amountRemaining)} remaining (${weeksRemaining} weeks)`, ''])
+    tr.eachCell((c) => { c.style = totalStyle })
+    tr.getCell(1).numFmt = '£#,##0.00'
+  }
+
+  ws.addRow([])
+
+  // ── Section 3: Vehicle Usage History ──
+  const s3 = ws.addRow(['Vehicle Usage History'])
+  s3.eachCell((c) => { c.style = sectionStyle })
+  ws.mergeCells(s3.number, 1, s3.number, 6)
+
+  const h3 = ws.addRow(['VRM', 'Make', 'Model', 'Supplier', 'From', 'To'])
+  h3.eachCell((c) => { c.style = headerStyle })
 
   if (vehicles.length === 0) {
     const nr = ws.addRow(['No vehicle records found.'])
@@ -82,13 +109,13 @@ export async function generateDepositExcel(data: any): Promise<Buffer> {
 
   ws.addRow([])
 
-  // ── Section 3: Vehicle Charges ──
-  const s3 = ws.addRow(['Vehicle Charges'])
-  s3.eachCell((c) => { c.style = sectionStyle })
-  ws.mergeCells(s3.number, 1, s3.number, 7)
+  // ── Section 4: Vehicle Charges ──
+  const s4 = ws.addRow(['Vehicle Charges'])
+  s4.eachCell((c) => { c.style = sectionStyle })
+  ws.mergeCells(s4.number, 1, s4.number, 7)
 
-  const h3 = ws.addRow(['VRM', 'Reason', 'Reference', 'Issue Date', 'Charged', 'Paid', 'Outstanding'])
-  h3.eachCell((c) => { c.style = headerStyle })
+  const h4 = ws.addRow(['VRM', 'Reason', 'Reference', 'Issue Date', 'Charged', 'Paid', 'Outstanding'])
+  h4.eachCell((c) => { c.style = headerStyle })
 
   if (charges.length === 0) {
     const nr = ws.addRow(['No vehicle charges found.'])
@@ -116,13 +143,13 @@ export async function generateDepositExcel(data: any): Promise<Buffer> {
 
   ws.addRow([])
 
-  // ── Section 4: Deposit Return Audit ──
-  const s4 = ws.addRow(['Deposit Return Audit'])
-  s4.eachCell((c) => { c.style = sectionStyle })
-  ws.mergeCells(s4.number, 1, s4.number, 4)
+  // ── Section 5: Deposit Return Audit ──
+  const s5 = ws.addRow(['Deposit Return Audit'])
+  s5.eachCell((c) => { c.style = sectionStyle })
+  ws.mergeCells(s5.number, 1, s5.number, 4)
 
-  const h4 = ws.addRow(['Amount', 'Date', 'Created By', 'Created Date'])
-  h4.eachCell((c) => { c.style = headerStyle })
+  const h5 = ws.addRow(['Amount', 'Date', 'Created By', 'Created Date'])
+  h5.eachCell((c) => { c.style = headerStyle })
 
   if (depositReturns.length === 0) {
     const nr = ws.addRow(['No Deposit Return record found.'])

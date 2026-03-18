@@ -62,54 +62,83 @@ app.post('/report/deposit', async (req, res) => {
   try {
     const p = await getPool();
 
-    // Section 1: Deposit Details
-    const depositResult = await p.request()
+    // Contractor lookup
+    const contractorResult = await p.request()
       .input('HrCode', sql.VarChar, hrCode)
       .query(`
-        SELECT
-          d.ContractorVehicleDepositId,
-          CAST(d.DepositAmount AS FLOAT) AS DepositAmount,
-          d.DepositWeeks,
-          d.IsDeleted AS IsCancelled,
-          CONVERT(VARCHAR, d.CreatedAt, 103) AS CreatedDate,
-          cup.FirstName + ' ' + cup.LastName AS CreatedBy,
-          CONVERT(VARCHAR, d.UpdatedAt, 103) AS UpdatedDate,
-          uup.FirstName + ' ' + uup.LastName AS UpdatedBy,
-          CONVERT(VARCHAR, d.DeletedAt, 103) AS CancelledDate,
-          dup.FirstName + ' ' + dup.LastName AS CancelledBy
-        FROM ContractorVehicleDeposit d
-        JOIN Contractor c ON c.ContractorId = d.ContractorId
-        -- Audit: CreatedBy
-        LEFT JOIN [User] cu ON cu.UserId = d.CreatedBy
-        LEFT JOIN UserProfile cup ON cup.UserId = cu.UserId
-        -- Audit: UpdatedBy
-        LEFT JOIN [User] uu ON uu.UserId = d.UpdatedBy
-        LEFT JOIN UserProfile uup ON uup.UserId = uu.UserId
-        -- Audit: DeletedBy / CancelledBy
-        LEFT JOIN [User] du ON du.UserId = d.DeletedBy
-        LEFT JOIN UserProfile dup ON dup.UserId = du.UserId
+        SELECT c.ContractorId, c.HrCode,
+               up.FirstName, up.LastName, up.Email, up.PhoneNumber
+        FROM Contractor c
+        JOIN [User] u ON u.UserId = c.UserId
+        JOIN UserProfile up ON up.UserId = u.UserId
         WHERE c.HrCode = @HrCode
       `);
 
-    // Section 1b: Transactions per deposit
-    const deposits = depositResult.recordset;
-    for (const deposit of deposits) {
-      const txResult = await p.request()
-        .input('DepositId', sql.Int, deposit.ContractorVehicleDepositId)
+    const contractor = contractorResult.recordset[0] || null;
+    if (!contractor) {
+      return res.json({ contractor: null, deposit: null, transactions: [], vehicles: [], charges: [], depositReturns: [] });
+    }
+
+    // Section 1A: Resolve last deposit ID (split query — no JOINs, no bit/numeric columns)
+    const depositIdResult = await p.request()
+      .input('HrCode', sql.VarChar, hrCode)
+      .query(`
+        SELECT TOP 1 ContractorVehicleDepositId
+        FROM ContractorVehicleDeposit
+        WHERE ContractorId = (
+            SELECT ContractorId FROM Contractor WHERE HrCode = @HrCode
+        )
+        ORDER BY ContractorVehicleDepositId DESC
+      `);
+
+    let deposit = null;
+    let transactions = [];
+    const lastDepositId = depositIdResult.recordset[0]?.ContractorVehicleDepositId ?? null;
+
+    if (lastDepositId) {
+      // Section 1B: Full deposit details (by primary key)
+      const depositResult = await p.request()
+        .input('LastDepositId', sql.Int, lastDepositId)
         .query(`
           SELECT
-            t.ContractorVehicleDepositTransactionId,
-            CAST(t.Amount AS FLOAT) AS Amount,
-            t.IsDeleted,
-            CONVERT(VARCHAR, t.CreatedAt, 103) AS Date,
-            cup.FirstName + ' ' + cup.LastName AS CreatedBy
-          FROM ContractorVehicleDepositTransaction t
-          LEFT JOIN [User] cu ON cu.UserId = t.CreatedBy
-          LEFT JOIN UserProfile cup ON cup.UserId = cu.UserId
-          WHERE t.ContractorVehicleDepositId = @DepositId
-            AND t.IsDeleted = 0
+              d.ContractorVehicleDepositId,
+              CAST(d.DepositAmount AS FLOAT)             AS DepositAmount,
+              d.DepositWeeks,
+              CONVERT(VARCHAR, d.IsDeleted)              AS IsCancelled,
+              CONVERT(VARCHAR, d.CreatedAt, 103)         AS CreatedDate,
+              CONVERT(VARCHAR, d.UpdatedAt, 103)         AS UpdatedDate,
+              CONVERT(VARCHAR, d.DeletedAt, 103)         AS CancelledDate,
+              cu.FirstName + ' ' + cu.LastName           AS CreatedBy,
+              uu.FirstName + ' ' + uu.LastName           AS UpdatedBy,
+              du.FirstName + ' ' + du.LastName           AS CancelledBy
+          FROM ContractorVehicleDeposit d
+          LEFT JOIN [User] cbu ON cbu.UserId = d.CreatedBy
+          LEFT JOIN UserProfile cu  ON cu.UserId  = cbu.UserId
+          LEFT JOIN [User] ubu ON ubu.UserId = d.UpdatedBy
+          LEFT JOIN UserProfile uu  ON uu.UserId  = ubu.UserId
+          LEFT JOIN [User] dbu ON dbu.UserId = d.DeletedBy
+          LEFT JOIN UserProfile du  ON du.UserId  = dbu.UserId
+          WHERE d.ContractorVehicleDepositId = @LastDepositId
         `);
-      deposit.transactions = txResult.recordset;
+      deposit = depositResult.recordset[0] || null;
+
+      // Section 1C: Transactions on last deposit (active only)
+      const txResult = await p.request()
+        .input('LastDepositId', sql.Int, lastDepositId)
+        .query(`
+          SELECT
+              t.ContractorVehicleDepositTransactionId,
+              CAST(t.Amount AS FLOAT)                    AS Amount,
+              CONVERT(VARCHAR, t.CreatedAt, 103)         AS Date,
+              cu.FirstName + ' ' + cu.LastName           AS CreatedBy
+          FROM ContractorVehicleDepositTransaction t
+          LEFT JOIN [User] cbu ON cbu.UserId = t.CreatedBy
+          LEFT JOIN UserProfile cu  ON cu.UserId  = cbu.UserId
+          WHERE t.ContractorVehicleDepositId = @LastDepositId
+            AND t.IsDeleted = 0
+          ORDER BY t.CreatedAt
+        `);
+      transactions = txResult.recordset;
     }
 
     // Section 2: Vehicle Usage History
@@ -187,21 +216,10 @@ app.post('/report/deposit', async (req, res) => {
         ORDER BY cap.Date DESC
       `);
 
-    // Contractor lookup
-    const contractorResult = await p.request()
-      .input('HrCode', sql.VarChar, hrCode)
-      .query(`
-        SELECT c.ContractorId, c.HrCode,
-               up.FirstName, up.LastName, up.Email, up.PhoneNumber
-        FROM Contractor c
-        JOIN [User] u ON u.UserId = c.UserId
-        JOIN UserProfile up ON up.UserId = u.UserId
-        WHERE c.HrCode = @HrCode
-      `);
-
     res.json({
-      contractor: contractorResult.recordset[0] || null,
-      deposits: deposits,
+      contractor,
+      deposit,
+      transactions,
       vehicles: vehiclesResult.recordset,
       charges: chargesResult.recordset,
       depositReturns: depositReturnResult.recordset,
