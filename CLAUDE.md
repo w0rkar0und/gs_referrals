@@ -66,9 +66,6 @@ gs_apps/
 │   │   │       ├── checks/
 │   │   │       │   ├── page.tsx         # Run Checks
 │   │   │       │   └── ChecksPanel.tsx
-│   │   │       └── users/
-│   │   │           ├── page.tsx         # User provisioning
-│   │   │           └── UserManagement.tsx
 │   │   ├── reports/                     # ── Reports app ──
 │   │   │   └── page.tsx                 # Report runner (server component, checks permissions)
 │   │   └── api/
@@ -76,7 +73,6 @@ gs_apps/
 │   │       │   ├── create-user/route.ts # Platform user creation (service role)
 │   │       │   └── update-user/route.ts # Platform user edit/deactivate/delete
 │   │       ├── referrals/admin/
-│   │       │   ├── create-user/route.ts
 │   │       │   └── update-referral/route.ts
 │   │       └── reports/
 │   │           ├── deposit/route.ts             # Proxy → Railway deposit report
@@ -425,12 +421,10 @@ CREATE TRIGGER on_auth_user_created
   referrals/submit/            → New referral form
   referrals/admin/             → Admin dashboard (all referrals)
   referrals/admin/checks/      → Run Checks
-  referrals/admin/users/       → User provisioning
   reports/                     → Report runner (all report types)
   api/platform/admin/create-user     → Platform user creation (service role)
   api/platform/admin/update-user     → Platform user edit/deactivate/delete (service role)
   api/referrals/admin/update-referral → Admin referral updates (service role)
-  api/referrals/admin/create-user    → Referrals user creation (service role)
   api/reports/deposit                → Deposit report proxy
   api/reports/working-days           → Working day count proxy
   api/reports/working-days-by-client → Fleet-wide report proxy
@@ -687,7 +681,7 @@ Query version: `v1.0`. Half-day rule applies to: `NL 1%`, `NL 2%`, `NL 3%`, `Nur
 
 ---
 
-## Current State (as of 18 March 2026)
+## Current State (as of 20 March 2026)
 
 ### Multi-App Platform — Live, Pushed to GitHub
 

@@ -16,6 +16,5 @@ export const APP_NAV: Record<string, NavLink[]> = {
     { href: '/referrals/submit', label: 'New Referral', adminOnly: false },
     { href: '/referrals/admin', label: 'Dashboard', adminOnly: true },
     { href: '/referrals/admin/checks', label: 'Run Checks', adminOnly: true },
-    { href: '/referrals/admin/users', label: 'Users', adminOnly: true },
   ],
 }
