@@ -88,7 +88,7 @@ gs_apps/
 │           └── referral-digest/route.ts
 ├── components/
 │   ├── AuthNavbar.tsx                   # Platform — server component, fetches profile
-│   ├── Navbar.tsx                       # Platform — multi-app aware, dynamic nav links
+│   ├── Navbar.tsx                       # Platform — multi-app aware, hamburger menu on mobile
 │   ├── platform/                        # ── Platform components ──
 │   │   └── PlatformUserManagement.tsx   # Admin user management (create/edit/deactivate/delete)
 │   ├── referrals/                       # ── Referrals app components ──
@@ -96,9 +96,10 @@ gs_apps/
 │   │   ├── CheckDetailView.tsx
 │   │   ├── HrCodeInput.tsx
 │   │   ├── ReferralForm.tsx
-│   │   ├── ReferralTable.tsx
+│   │   ├── ReferralTable.tsx             # Desktop table + mobile card layout
 │   │   ├── SearchInput.tsx
 │   │   ├── SortableHeader.tsx
+│   │   ├── SuccessToast.tsx              # Auto-dismissing success banner
 │   │   └── SyncStatusBanner.tsx
 │   └── reports/                         # ── Reports app components ──
 │       ├── ReportRunner.tsx             # Report selector, download/email actions
@@ -689,17 +690,24 @@ Query version: `v1.0`. Half-day rule applies to: `NL 1%`, `NL 2%`, `NL 3%`, `Nur
 - `user_apps` table for per-app access control with `permissions` JSONB
 - Middleware enforces per-app authorisation
 - Navbar is multi-app aware with contextual navigation — Greythorn logo PNG at 28x28px
+- Navbar has hamburger menu on mobile (below `sm` breakpoint) with dropdown for nav links, user info, and sign out
 - Platform admin at `/apps/admin` for user management (including admin password reset)
 - Components namespaced under `components/referrals/`, `components/reports/`, `components/platform/`
 - All referral routes under `/referrals/` prefix
 - Old URLs redirected via `next.config.ts`
 - Repo renamed to `gs_apps` on GitHub, Vercel, and Supabase
 - Local directory renamed to `gs_apps`
-- Login page uses Greythorn strapline logo, tries both `@greythorn.internal` and `@greythorn.external` domains sequentially (no regex-based domain detection)
+- Login page uses Greythorn strapline logo with subtle gradient background, tries both `@greythorn.internal` and `@greythorn.external` domains sequentially (no regex-based domain detection)
+- Browser favicon set to Greythorn "G" logo (`/greythorn-logo.png`) via metadata in `app/layout.tsx`
 
 ### Referrals App — Fully Built
 
 All 11 original build phases complete. Referrals app is live at `/referrals/*`.
+- Redundant referrals user management screen (`/referrals/admin/users`) removed — all user management via platform admin at `/apps/admin`
+- My Referrals page: mobile-friendly card layout (below `sm`), desktop table unchanged
+- Submit form: responsive padding (`p-5 sm:p-8`)
+- Success toast: auto-dismisses after 4s with fade animation, cleans URL query param
+- Empty state: icon + "Register your first referral" CTA link
 
 ### Reports App — Fully Built
 
