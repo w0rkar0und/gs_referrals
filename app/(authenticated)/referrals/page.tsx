@@ -48,7 +48,7 @@ export default async function ReferralsPage({ searchParams }: { searchParams: Pr
           <SuccessToast message="Referral submitted successfully." />
         )}
 
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-6">
           <ReferralTable referrals={enrichedReferrals} />
         </div>
       </div>

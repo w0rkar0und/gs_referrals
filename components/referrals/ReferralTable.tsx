@@ -25,9 +25,56 @@ function StatusBadge({ status }: { status: Referral['status'] }) {
   )
 }
 
+function QwyloStatus({ active, statusDate }: { active: boolean | null | undefined; statusDate: string | null | undefined }) {
+  if (active == null) return <span className="text-slate-400">—</span>
+  return (
+    <div>
+      <span
+        className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${
+          active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+        }`}
+        title={statusDate ? `Status since: ${formatDate(statusDate)}` : ''}
+      >
+        {active ? 'Active' : 'Inactive'}
+      </span>
+      {statusDate && (
+        <span className="block text-xs text-slate-400 mt-0.5">{formatDate(statusDate)}</span>
+      )}
+    </div>
+  )
+}
+
 interface EnrichedReferral extends Referral {
   qwylo_active?: boolean | null
   qwylo_status_date?: string | null
+}
+
+function ReferralCard({ r }: { r: EnrichedReferral }) {
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 p-4">
+      <div className="flex items-start justify-between mb-3">
+        <div>
+          <p className="font-medium text-slate-900">{r.recruited_name}</p>
+          <p className="text-sm text-slate-500">{r.recruited_hr_code}</p>
+        </div>
+        <StatusBadge status={r.status} />
+      </div>
+      <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+        <div>
+          <p className="text-slate-400 text-xs">Start Date</p>
+          <p className="text-slate-700">{formatDate(r.start_date)}</p>
+        </div>
+        <div>
+          <p className="text-slate-400 text-xs">Submitted</p>
+          <p className="text-slate-700">{formatDate(r.submitted_at)}</p>
+        </div>
+        <div>
+          <p className="text-slate-400 text-xs">Qwylo Status</p>
+          <QwyloStatus active={r.qwylo_active} statusDate={r.qwylo_status_date} />
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export default function ReferralTable({ referrals }: { referrals: EnrichedReferral[] }) {
@@ -62,45 +109,42 @@ export default function ReferralTable({ referrals }: { referrals: EnrichedReferr
       <div className="mb-4">
         <SearchInput value={search} onChange={setSearch} />
       </div>
-      <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-slate-200 text-left text-slate-500">
-            <SortableHeader label="Contractor Name" sortKey="recruited_name" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} className="pr-4" />
-            <SortableHeader label="HR Code" sortKey="recruited_hr_code" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} className="pr-4" />
-            <SortableHeader label="Qwylo Status" sortKey="qwylo_active" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} className="pr-4" />
-            <SortableHeader label="Start Date" sortKey="start_date" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} className="pr-4" />
-            <SortableHeader label="Submitted" sortKey="submitted_at" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} className="pr-4" />
-            <SortableHeader label="Status" sortKey="status" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
-          </tr>
-        </thead>
-        <tbody>
-          {sorted.map((r) => (
-            <tr key={r.id} className="border-b border-slate-100 last:border-0">
-              <td className="py-3 pr-4 text-slate-900">{r.recruited_name}</td>
-              <td className="py-3 pr-4 text-slate-900">{r.recruited_hr_code}</td>
-              <td className="py-3 pr-4">
-                {r.qwylo_active != null ? (
-                  <span
-                    className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                      r.qwylo_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                    }`}
-                    title={r.qwylo_status_date ? `Status since: ${formatDate(r.qwylo_status_date)}` : ''}
-                  >
-                    {r.qwylo_active ? 'Active' : 'Inactive'}
-                  </span>
-                ) : '—'}
-                {r.qwylo_status_date && (
-                  <span className="block text-xs text-slate-400 mt-0.5">{formatDate(r.qwylo_status_date)}</span>
-                )}
-              </td>
-              <td className="py-3 pr-4 text-slate-900">{formatDate(r.start_date)}</td>
-              <td className="py-3 pr-4 text-slate-900">{formatDate(r.submitted_at)}</td>
-              <td className="py-3"><StatusBadge status={r.status} /></td>
+
+      {/* Mobile: card layout */}
+      <div className="sm:hidden space-y-3">
+        {sorted.map((r) => (
+          <ReferralCard key={r.id} r={r} />
+        ))}
+      </div>
+
+      {/* Desktop: table layout */}
+      <div className="hidden sm:block overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-slate-200 text-left text-slate-500">
+              <SortableHeader label="Contractor Name" sortKey="recruited_name" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} className="pr-4" />
+              <SortableHeader label="HR Code" sortKey="recruited_hr_code" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} className="pr-4" />
+              <SortableHeader label="Qwylo Status" sortKey="qwylo_active" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} className="pr-4" />
+              <SortableHeader label="Start Date" sortKey="start_date" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} className="pr-4" />
+              <SortableHeader label="Submitted" sortKey="submitted_at" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} className="pr-4" />
+              <SortableHeader label="Status" sortKey="status" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {sorted.map((r) => (
+              <tr key={r.id} className="border-b border-slate-100 last:border-0">
+                <td className="py-3 pr-4 text-slate-900">{r.recruited_name}</td>
+                <td className="py-3 pr-4 text-slate-900">{r.recruited_hr_code}</td>
+                <td className="py-3 pr-4">
+                  <QwyloStatus active={r.qwylo_active} statusDate={r.qwylo_status_date} />
+                </td>
+                <td className="py-3 pr-4 text-slate-900">{formatDate(r.start_date)}</td>
+                <td className="py-3 pr-4 text-slate-900">{formatDate(r.submitted_at)}</td>
+                <td className="py-3"><StatusBadge status={r.status} /></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   )
