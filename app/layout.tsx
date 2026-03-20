@@ -15,6 +15,10 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "GS Apps",
   description: "Greythorn Services application platform",
+  icons: {
+    icon: "/greythorn-logo.png",
+    apple: "/greythorn-logo.png",
+  },
 };
 
 export default function RootLayout({
