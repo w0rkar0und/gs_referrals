@@ -109,7 +109,9 @@ gs_apps/
 │       └── SettlementReport.tsx         # DA Relations settlement — 5 collapsible sections
 ├── docs/
 │   ├── GREYTHORN_REPORTS_CONTEXT.md     # Full report specs (deposit + working days)
-│   └── WORKING_DAY_COUNT_BY_CLIENT.md   # Fleet-wide report spec + SQL
+│   ├── WORKING_DAY_COUNT_BY_CLIENT.md   # Fleet-wide report spec + SQL
+│   ├── REFERRALS_USER_GUIDE.md          # Referrals app user guide (plain English)
+│   └── Referrals_User_Guide.pdf         # PDF version of the user guide
 ├── lib/
 │   ├── apps.ts                          # App registry — add new apps here
 │   ├── app-nav.ts                       # Per-app navigation links
@@ -127,7 +129,8 @@ gs_apps/
 │   └── .gitignore
 ├── scripts/
 │   ├── contractor_sync.py               # Greythorn → Supabase contractor sync
-│   └── referral_check.py                # Working day verification
+│   ├── referral_check.py                # Working day verification
+│   └── generate_referrals_guide_pdf.py  # Regenerate Referrals_User_Guide.pdf
 ├── supabase/
 │   └── migrations/
 │       ├── 001_initial_schema.sql       # Core tables, RLS, triggers
@@ -682,7 +685,7 @@ Query version: `v1.0`. Half-day rule applies to: `NL 1%`, `NL 2%`, `NL 3%`, `Nur
 
 ---
 
-## Current State (as of 20 March 2026)
+## Current State (as of 21 March 2026)
 
 ### Multi-App Platform — Live, Pushed to GitHub
 
@@ -708,6 +711,13 @@ All 11 original build phases complete. Referrals app is live at `/referrals/*`.
 - Submit form: responsive padding (`p-5 sm:p-8`)
 - Success toast: auto-dismisses after 4s with fade animation, cleans URL query param
 - Empty state: icon + "Register your first referral" CTA link
+
+### Referrals User Guide — Created
+
+- Non-admin user guide at `docs/REFERRALS_USER_GUIDE.md` and `docs/Referrals_User_Guide.pdf`
+- Written in plain English for users whose first language is not English
+- Covers: submission steps, 7-day rule (REF-003), one-per-contractor rule (REF-001), 6-month returning contractor rule (REF-002), email to SLT@greythorn.services required for validation, 30-day working day threshold, half-day contract types (Nursery L1/2/3 & Sameday_6), status meanings, My Referrals page
+- PDF generated via `scripts/generate_referrals_guide_pdf.py` (uses reportlab) — re-run to regenerate after edits
 
 ### Reports App — Fully Built
 

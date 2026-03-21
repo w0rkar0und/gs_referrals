@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import SortableHeader, { useSort } from '@/components/referrals/SortableHeader'
 import SearchInput from '@/components/referrals/SearchInput'
 
@@ -13,6 +14,16 @@ interface Referral {
   start_date: string
   qwylo_active?: boolean | null
   qwylo_status_date?: string | null
+}
+
+interface CheckResult {
+  hr_code: string
+  name: string
+  outcome: 'approved' | 'not_yet_eligible' | 'skipped' | 'error'
+  working_days_total?: number
+  days_remaining?: number
+  discrepancy?: boolean
+  reason?: string
 }
 
 function formatDate(dateStr: string | null): string {
@@ -51,9 +62,13 @@ export default function ChecksPanel({
   pendingReferrals: Referral[]
   allReferrals: Referral[]
 }) {
+  const router = useRouter()
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [showAll, setShowAll] = useState(false)
   const [search, setSearch] = useState('')
+  const [checking, setChecking] = useState(false)
+  const [checkResults, setCheckResults] = useState<CheckResult[] | null>(null)
+  const [checkError, setCheckError] = useState<string | null>(null)
 
   const displayList = showAll ? allReferrals : pendingReferrals
   const filtered = displayList.filter((r) =>
@@ -64,14 +79,42 @@ export default function ChecksPanel({
   function toggleSelect(hrCode: string) {
     setSelected((prev) => {
       const next = new Set(prev)
-      if (next.has(hrCode)) next.delete(hrCode)
-      else next.add(hrCode)
+      if (next.has(hrCode)) {
+        next.delete(hrCode)
+      } else if (next.size < 4) {
+        next.add(hrCode)
+      }
       return next
     })
   }
 
+  async function runCheck() {
+    setChecking(true)
+    setCheckError(null)
+    setCheckResults(null)
+    try {
+      const res = await fetch('/api/referrals/admin/run-checks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hrCodes: Array.from(selected) }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || 'Check failed')
+      }
+      const data = await res.json()
+      setCheckResults(data.results)
+      router.refresh()
+    } catch (e: unknown) {
+      setCheckError(e instanceof Error ? e.message : 'Check failed')
+    } finally {
+      setChecking(false)
+    }
+  }
+
   function selectAllVisible() {
-    setSelected(new Set(displayList.map((r) => r.recruited_hr_code)))
+    const codes = sorted.map((r) => r.recruited_hr_code).slice(0, 4)
+    setSelected(new Set(codes))
   }
 
   function clearSelection() {
@@ -129,7 +172,7 @@ export default function ChecksPanel({
           {singleCommand && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                3. Check selected ({selectedCodes.length})
+                3. Check selected ({selectedCodes.length}) — copy command
               </label>
               <div className="flex gap-2">
                 <code className="flex-1 bg-slate-900 text-emerald-400 rounded-lg px-4 py-2.5 text-sm font-mono select-all overflow-x-auto whitespace-nowrap">
@@ -142,6 +185,86 @@ export default function ChecksPanel({
                   Copy
                 </button>
               </div>
+            </div>
+          )}
+        </div>
+
+        {/* Run Check button */}
+        <div className="mt-5 pt-5 border-t border-slate-200">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={runCheck}
+              disabled={selected.size === 0 || checking}
+              className={`px-5 py-2.5 rounded-lg text-sm font-medium text-white transition-colors ${
+                selected.size === 0 || checking
+                  ? 'bg-gray-300 cursor-not-allowed'
+                  : 'bg-blue-600 hover:bg-blue-700'
+              }`}
+            >
+              {checking ? 'Running…' : selected.size > 0 ? `Run Check (${selected.size})` : 'Run Check'}
+            </button>
+            <span className="text-xs text-gray-500">
+              {selected.size === 0
+                ? 'Select 1–4 referrals to run a check'
+                : selected.size >= 4
+                ? 'Maximum 4 selected'
+                : `${selected.size} selected, up to 4`}
+            </span>
+          </div>
+
+          {/* Check results */}
+          {checkError && (
+            <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-800">
+              {checkError}
+            </div>
+          )}
+
+          {checkResults && checkResults.length > 0 && (
+            <div className="mt-4 space-y-2">
+              {checkResults.map((r) => (
+                <div
+                  key={r.hr_code}
+                  className={`flex items-center justify-between rounded-lg border px-4 py-3 text-sm ${
+                    r.outcome === 'approved'
+                      ? 'bg-green-50 border-green-200'
+                      : r.outcome === 'not_yet_eligible'
+                      ? 'bg-amber-50 border-amber-200'
+                      : r.outcome === 'error'
+                      ? 'bg-red-50 border-red-200'
+                      : 'bg-gray-50 border-gray-200'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="font-mono font-medium text-gray-900">{r.hr_code}</span>
+                    <span className="text-gray-700">{r.name}</span>
+                  </div>
+                  <div className="flex items-center gap-4 text-right">
+                    {r.working_days_total != null && (
+                      <span className="text-gray-600">
+                        {r.working_days_total.toFixed(1)} days
+                        {r.outcome === 'not_yet_eligible' && r.days_remaining != null && (
+                          <span className="text-amber-700 ml-1">({r.days_remaining.toFixed(1)} remaining)</span>
+                        )}
+                      </span>
+                    )}
+                    {r.discrepancy && (
+                      <span className="text-xs text-red-600 font-medium" title="Start date discrepancy > 7 days">Discrepancy</span>
+                    )}
+                    <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                      r.outcome === 'approved' ? 'bg-green-100 text-green-800'
+                      : r.outcome === 'not_yet_eligible' ? 'bg-amber-100 text-amber-800'
+                      : r.outcome === 'error' ? 'bg-red-100 text-red-800'
+                      : 'bg-gray-100 text-gray-700'
+                    }`}>
+                      {r.outcome === 'approved' ? 'Approved'
+                      : r.outcome === 'not_yet_eligible' ? 'Not Yet Eligible'
+                      : r.outcome === 'error' ? 'Error'
+                      : 'Skipped'}
+                    </span>
+                    {r.reason && <span className="text-xs text-gray-500">{r.reason}</span>}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
